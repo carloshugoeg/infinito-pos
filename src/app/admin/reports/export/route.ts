@@ -1,10 +1,13 @@
+import { UserRole } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { paymentMethodLabel } from "@/lib/labels";
 import { formatCurrency, toNumber } from "@/lib/utils";
 import { parseReportDateRange } from "@/server/admin-crud";
-import { getActiveBranch } from "@/server/auth";
+import { getActiveBranch, requireRole } from "@/server/auth";
 
 export async function GET(request: Request) {
+  await requireRole([UserRole.ADMIN]);
   const { branch } = await getActiveBranch();
   const url = new URL(request.url);
   const range = parseReportDateRange(url.searchParams.get("from"), url.searchParams.get("to"));
@@ -24,7 +27,7 @@ export async function GET(request: Request) {
   const rows = [
     ["Fecha", "Orden", "Cliente", "Telefono", "Producto", "Cantidad", "Modificadores", "Pagos", "Total orden"],
     ...orders.flatMap((order) => {
-      const payments = order.payments.map((payment) => `${payment.method} ${formatCurrency(toNumber(payment.amount))}`).join(" + ");
+      const payments = order.payments.map((payment) => `${paymentMethodLabel(payment.method)} ${formatCurrency(toNumber(payment.amount))}`).join(" + ");
       return order.items.map((item) => [
         order.createdAt.toLocaleString("es-GT"),
         order.id,

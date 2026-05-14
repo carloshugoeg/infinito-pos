@@ -6,11 +6,12 @@ import { toNumber } from "@/lib/utils";
 import { getActiveBranch } from "@/server/auth";
 import { ensureCashSessionForKiosk } from "@/server/actions/cash-actions";
 import { listSellableProducts } from "@/server/queries/catalog";
+import { getAppSettings } from "@/server/queries/settings";
 
 export default async function KioskPage() {
   const { branch } = await getActiveBranch();
   const cashSession = await ensureCashSessionForKiosk();
-  const products = await listSellableProducts();
+  const [products, settings] = await Promise.all([listSellableProducts(), getAppSettings()]);
   const activeOrders = await prisma.order.findMany({
     where: {
       branchId: branch.id,
@@ -29,6 +30,7 @@ export default async function KioskPage() {
     <AppShell title={`Kiosco - ${branch.name}`}>
       <KioskClient
         products={products}
+        modifierGridEnabled={settings.modifierGridEnabled}
         cashSessionOpenedAt={cashSession.openedAt.toISOString()}
         activeOrders={activeOrders.map((order) => ({
           id: order.id,

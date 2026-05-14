@@ -1,4 +1,4 @@
-import { InventoryMovementType } from "@prisma/client";
+import { InventoryMovementType, UserRole } from "@prisma/client";
 import { AppShell } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, Td, Th } from "@/components/ui/table";
 import { prisma } from "@/lib/db";
+import { inventoryMovementTypeLabel } from "@/lib/labels";
 import { toNumber } from "@/lib/utils";
 import { recordInventoryMovementAction, reverseInventoryMovementAction } from "@/server/actions/admin-actions";
-import { getActiveBranch } from "@/server/auth";
+import { getActiveBranch, requireRole } from "@/server/auth";
 
 export default async function InventoryPage() {
+  await requireRole([UserRole.ADMIN]);
   const { branch } = await getActiveBranch();
   const [ingredients, inventory, movements] = await Promise.all([
     prisma.ingredient.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
@@ -79,7 +81,7 @@ export default async function InventoryPage() {
                   {movements.map((move) => (
                     <tr key={move.id}>
                       <Td>{move.createdAt.toLocaleString("es-GT")}</Td>
-                      <Td>{move.type}</Td>
+                      <Td>{inventoryMovementTypeLabel(move.type)}</Td>
                       <Td>{move.ingredient.name}</Td>
                       <Td>{toNumber(move.quantityDelta)}</Td>
                       <Td>{move.reason}</Td>

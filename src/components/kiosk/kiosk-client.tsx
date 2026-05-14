@@ -15,6 +15,7 @@ import {
   calculateCashPaymentFromReceived,
   calculateCashChange,
   calculateOrderTotals,
+  MAX_ITEM_QUANTITY,
   replaceCartItem,
   sanitizeOrderNote,
   validateCheckout,
@@ -43,11 +44,13 @@ type ActiveOrder = {
 export function KioskClient({
   products,
   activeOrders,
-  cashSessionOpenedAt
+  cashSessionOpenedAt,
+  modifierGridEnabled
 }: {
   products: CatalogProduct[];
   activeOrders: ActiveOrder[];
   cashSessionOpenedAt: string;
+  modifierGridEnabled: boolean;
 }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedProductId, setSelectedProductId] = useState(products[0]?.id ?? "");
@@ -227,7 +230,7 @@ export function KioskClient({
                   <Minus size={16} />
                 </Button>
                 <strong className="w-10 text-center text-lg">{quantity}</strong>
-                <Button type="button" size="icon" variant="ghost" className="rounded-full" onClick={() => setQuantity((value) => value + 1)}>
+                <Button type="button" size="icon" variant="ghost" className="rounded-full" onClick={() => setQuantity((value) => Math.min(MAX_ITEM_QUANTITY, value + 1))}>
                   <Plus size={16} />
                 </Button>
               </div>
@@ -248,7 +251,7 @@ export function KioskClient({
                         Min {group.minSelections} - Max {group.maxSelections}
                       </span>
                     </div>
-                    <div className="flex flex-wrap gap-3">
+                    <div className={modifierGridEnabled ? modifierGridClass(group.modifiers.length) : "flex flex-wrap gap-3"}>
                       {group.modifiers.map((modifier) => {
                         const active = selectedModifiers.includes(modifier.id);
                         return (
@@ -256,17 +259,49 @@ export function KioskClient({
                             type="button"
                             key={modifier.id}
                             onClick={() => toggleModifier(selectedProduct, modifier.id)}
-                            className={`touch-target rounded-full border px-6 py-3 text-sm font-bold transition-all duration-200 ${active
-                                ? "selected-item border-transparent shadow-md"
-                                : "border-[var(--border)] bg-white text-[var(--foreground)] hover:border-[var(--primary)]"
-                              }`}
+                            className={
+                              modifierGridEnabled
+                                ? `group/tile min-h-32 rounded-[1.75rem] border p-4 text-left transition-all duration-200 sm:min-h-36 ${
+                                    active
+                                      ? "selected-item border-transparent shadow-lg"
+                                      : "border-[var(--border)] bg-white text-[var(--foreground)] hover:-translate-y-0.5 hover:border-[var(--primary)] hover:shadow-md"
+                                  }`
+                                : `touch-target rounded-full border px-6 py-3 text-sm font-bold transition-all duration-200 ${
+                                    active
+                                      ? "selected-item border-transparent shadow-md"
+                                      : "border-[var(--border)] bg-white text-[var(--foreground)] hover:border-[var(--primary)]"
+                                  }`
+                            }
                           >
-                            {modifier.name}
-                            {modifier.priceDelta > 0 ? (
-                              <span className={`ml-2 ${active ? "text-white/90" : "text-[var(--primary)]"}`}>
-                                +{formatCurrency(modifier.priceDelta)}
+                            {modifierGridEnabled ? (
+                              <span className="flex h-full min-h-24 flex-col justify-between gap-4">
+                                <span className="flex items-start justify-between gap-3">
+                                  <span
+                                    className={`grid size-14 shrink-0 place-items-center rounded-2xl font-display text-2xl font-black transition ${
+                                      active ? "bg-white/20 text-white" : "bg-[var(--soft-mint)] text-[var(--foreground)] group-hover/tile:bg-[var(--primary)] group-hover/tile:text-white"
+                                    }`}
+                                  >
+                                    {modifier.name.slice(0, 1)}
+                                  </span>
+                                  <span className={`h-2 min-w-10 flex-1 rounded-full ${active ? "bg-white/30" : "bg-[var(--accent)]/70"}`} />
+                                </span>
+                                <span>
+                                  <span className="block text-lg font-black leading-tight sm:text-xl">{modifier.name}</span>
+                                  <span className={`mt-2 block text-sm font-black ${active ? "text-white/90" : "text-[var(--primary)]"}`}>
+                                    {modifier.priceDelta > 0 ? `+${formatCurrency(modifier.priceDelta)}` : "Incluido"}
+                                  </span>
+                                </span>
                               </span>
-                            ) : null}
+                            ) : (
+                              <>
+                                {modifier.name}
+                                {modifier.priceDelta > 0 ? (
+                                  <span className={`ml-2 ${active ? "text-white/90" : "text-[var(--primary)]"}`}>
+                                    +{formatCurrency(modifier.priceDelta)}
+                                  </span>
+                                ) : null}
+                              </>
+                            )}
                           </button>
                         );
                       })}
@@ -484,6 +519,12 @@ function CheckoutSubmitButton({ disabled, onClick }: { disabled: boolean; onClic
       {pending ? "..." : "COBRAR"}
     </Button>
   );
+}
+
+function modifierGridClass(count: number) {
+  if (count <= 3) return "grid grid-cols-2 gap-3 sm:grid-cols-3";
+  if (count <= 6) return "grid grid-cols-2 gap-3 lg:grid-cols-3";
+  return "grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4";
 }
 
 function statusLabel(status: ActiveOrder["status"]) {

@@ -56,7 +56,7 @@ export default async function AdminSettingsPage() {
 
                 <div className="grid gap-6 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="accentColor">Color de Acento (Primary)</Label>
+                    <Label htmlFor="accentColor">Color principal</Label>
                     <div className="flex gap-3">
                       <Input
                         id="accentColor"
@@ -74,7 +74,7 @@ export default async function AdminSettingsPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="backgroundColor">Color de Fondo (Background)</Label>
+                    <Label htmlFor="backgroundColor">Color de fondo</Label>
                     <div className="flex gap-3">
                       <Input
                         id="backgroundColor"
@@ -91,6 +91,24 @@ export default async function AdminSettingsPage() {
                       />
                     </div>
                   </div>
+                </div>
+
+                <div className="rounded-[1.5rem] border border-[var(--border)] bg-white/70 p-4">
+                  <label htmlFor="modifierGridEnabled" className="flex items-center justify-between gap-4">
+                    <div>
+                      <span className="block text-sm font-black text-[var(--foreground)]">Reticula tactil en kiosco</span>
+                      <span className="mt-1 block text-sm font-medium text-[var(--muted-foreground)]">
+                        Muestra bases, toppings y extras como cuadros grandes.
+                      </span>
+                    </div>
+                    <input
+                      id="modifierGridEnabled"
+                      name="modifierGridEnabled"
+                      type="checkbox"
+                      defaultChecked={settings.modifierGridEnabled}
+                      className="size-6 accent-[var(--primary)]"
+                    />
+                  </label>
                 </div>
 
                 <div className="flex justify-end pt-4">

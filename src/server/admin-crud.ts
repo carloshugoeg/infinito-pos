@@ -13,6 +13,23 @@ export function chooseRemovalMode(dependencyCount: number): RemovalMode {
   return dependencyCount > 0 ? "deactivate" : "delete";
 }
 
+export function parseNumberField(
+  value: FormDataEntryValue | null | undefined,
+  label: string,
+  options: { fallback?: number; min?: number; max?: number; integer?: boolean; decimals?: number } = {}
+) {
+  const raw = String(value ?? "").trim();
+  const parsed = raw === "" && options.fallback !== undefined ? options.fallback : Number(raw);
+  if (!Number.isFinite(parsed)) throw new Error(`${label} debe ser un numero valido.`);
+  if (options.integer && !Number.isInteger(parsed)) throw new Error(`${label} debe ser un entero.`);
+  if (options.min !== undefined && parsed < options.min) throw new Error(`${label} no puede ser menor que ${options.min}.`);
+  if (options.max !== undefined && parsed > options.max) throw new Error(`${label} no puede ser mayor que ${options.max}.`);
+  if (options.decimals !== undefined && !hasDecimalPrecision(parsed, options.decimals)) {
+    throw new Error(`${label} permite maximo ${options.decimals} decimales.`);
+  }
+  return parsed;
+}
+
 export function parseReportDateRange(from: string | null | undefined, to: string | null | undefined, now = new Date()) {
   const today = formatDateInput(now);
   const startInput = isDateInput(from) ? String(from) : today;
@@ -28,6 +45,11 @@ export function parseReportDateRange(from: string | null | undefined, to: string
   }
 
   return { start, end, startInput, endInput };
+}
+
+function hasDecimalPrecision(value: number, decimals: number) {
+  const factor = 10 ** decimals;
+  return Math.abs(value * factor - Math.round(value * factor)) < 1e-9;
 }
 
 function isDateInput(value: string | null | undefined) {

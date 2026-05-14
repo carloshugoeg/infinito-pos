@@ -1,5 +1,7 @@
 export type OrderStatusValue = "PAID" | "PREPARING" | "READY" | "DELIVERED" | "CANCELLED";
 
+const orderStatuses: OrderStatusValue[] = ["PAID", "PREPARING", "READY", "DELIVERED", "CANCELLED"];
+
 const nextStatusByCurrent: Partial<Record<OrderStatusValue, OrderStatusValue>> = {
   PAID: "PREPARING",
   PREPARING: "READY",
@@ -7,6 +9,10 @@ const nextStatusByCurrent: Partial<Record<OrderStatusValue, OrderStatusValue>> =
 };
 
 export function validateOrderStatusTransition(currentStatus: OrderStatusValue, nextStatus: OrderStatusValue) {
+  if (!isOrderStatusValue(currentStatus) || !isOrderStatusValue(nextStatus)) {
+    return ["Estado de orden invalido."];
+  }
+
   if (currentStatus === "CANCELLED" || currentStatus === "DELIVERED") {
     return ["No se puede cambiar una orden cerrada."];
   }
@@ -20,4 +26,8 @@ export function validateOrderStatusTransition(currentStatus: OrderStatusValue, n
   }
 
   return [];
+}
+
+export function isOrderStatusValue(value: unknown): value is OrderStatusValue {
+  return orderStatuses.includes(value as OrderStatusValue);
 }

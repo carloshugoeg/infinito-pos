@@ -1,4 +1,4 @@
-import { PaymentMethod } from "@prisma/client";
+import { PaymentMethod, UserRole } from "@prisma/client";
 import Link from "next/link";
 import { AppShell } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Table, Td, Th } from "@/components/ui/table";
 import { prisma } from "@/lib/db";
 import { formatCurrency, toNumber } from "@/lib/utils";
 import { parseReportDateRange } from "@/server/admin-crud";
-import { getActiveBranch } from "@/server/auth";
+import { getActiveBranch, requireRole } from "@/server/auth";
 import { getEmpiricalDailyReport } from "@/server/reports/empirical-daily";
 
 type ReportsPageProps = {
@@ -17,6 +17,7 @@ type ReportsPageProps = {
 };
 
 export default async function ReportsPage({ searchParams }: ReportsPageProps) {
+  await requireRole([UserRole.ADMIN]);
   const { branch } = await getActiveBranch();
   const params = (await searchParams) ?? {};
   const range = parseReportDateRange(readParam(params.from), readParam(params.to));

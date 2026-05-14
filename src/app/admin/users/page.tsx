@@ -29,7 +29,7 @@ export default async function UsersPage() {
                 <Label>Rol</Label>
                 <select name="role" className="touch-target w-full rounded-md border border-[var(--border)] bg-white px-3">
                   <option value="OPERATOR">Operador</option>
-                  <option value="ADMIN">Admin</option>
+                  <option value="ADMIN">Administrador</option>
                 </select>
               </div>
               <div className="space-y-2">
@@ -60,7 +60,7 @@ export default async function UsersPage() {
                         <Label>Rol</Label>
                         <select name="role" defaultValue={user.role} className="touch-target w-full rounded-md border border-[var(--border)] bg-white px-3">
                           <option value="OPERATOR">Operador</option>
-                          <option value="ADMIN">Admin</option>
+                          <option value="ADMIN">Administrador</option>
                         </select>
                       </div>
                       <div><Label>Nueva contrasena</Label><Input name="password" type="password" placeholder="Dejar igual" /></div>

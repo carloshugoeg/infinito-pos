@@ -20,6 +20,10 @@ export type CatalogProduct = {
   modifierGroups: CatalogModifierGroup[];
 };
 
+export const MAX_CART_LINES = 60;
+export const MAX_ITEM_QUANTITY = 99;
+export const MAX_MONEY_AMOUNT = 999_999.99;
+
 export type CartItemInput = {
   productId: string;
   quantity: number;
@@ -59,6 +63,10 @@ export function validateModifierSelections(product: CatalogProduct, selectedModi
   const errors: string[] = [];
   const selected = new Set(selectedModifierIds);
 
+  if (selected.size !== selectedModifierIds.length) {
+    errors.push("No repitas el mismo modificador.");
+  }
+
   for (const group of product.modifierGroups) {
     const selectedCount = group.modifiers.filter((modifier) => selected.has(modifier.id)).length;
     if (group.isRequired && selectedCount < Math.max(1, group.minSelections)) {
@@ -84,11 +92,12 @@ export function validateModifierSelections(product: CatalogProduct, selectedModi
 
 export function calculateCartItemTotal(product: CatalogProduct, selectedModifierIds: string[], quantity: number) {
   const modifiers = product.modifierGroups.flatMap((group) => group.modifiers);
-  const modifierTotal = selectedModifierIds.reduce((total, modifierId) => {
+  const safeQuantity = Number.isInteger(quantity) && quantity > 0 ? quantity : 0;
+  const modifierTotal = Array.from(new Set(selectedModifierIds)).reduce((total, modifierId) => {
     const modifier = modifiers.find((item) => item.id === modifierId);
     return total + (modifier?.priceDelta ?? 0);
   }, 0);
-  return roundMoney((product.basePrice + modifierTotal) * quantity);
+  return roundMoney((product.basePrice + modifierTotal) * safeQuantity);
 }
 
 export function calculateOrderTotals(items: Array<{ lineTotal: number }>) {
@@ -105,7 +114,14 @@ export function validatePayments(total: number, payments: PaymentInput[]) {
   const errors: string[] = [];
   const paid = roundMoney(payments.reduce((sum, payment) => sum + (isValidMoney(payment.amount) ? payment.amount : 0), 0));
   if (payments.length === 0) errors.push("Agrega al menos un pago.");
-  if (paid < total) errors.push("El monto pagado es menor al total.");
+  if (paid < roundMoney(total)) errors.push("El monto pagado es menor al total.");
+  if (paid > roundMoney(total)) errors.push("El monto pagado no debe superar el total.");
+
+  const paymentMethods = payments.map((payment) => payment.method);
+  if (new Set(paymentMethods).size !== paymentMethods.length) {
+    errors.push("Usa un solo registro por metodo de pago.");
+  }
+
   for (const payment of payments) {
     if (!isValidPaymentMethod(payment.method)) {
       errors.push("Metodo de pago invalido.");
@@ -116,9 +132,13 @@ export function validatePayments(total: number, payments: PaymentInput[]) {
       continue;
     }
     if (payment.amount <= 0) errors.push("Todos los pagos deben ser mayores a cero.");
+    if (payment.amount > MAX_MONEY_AMOUNT) errors.push("El monto del pago es demasiado alto.");
     if (payment.method === "CASH" && !isValidMoney(payment.receivedAmount)) {
       errors.push("El efectivo recibido debe ser un numero valido.");
       continue;
+    }
+    if (payment.method === "CASH" && Number(payment.receivedAmount || 0) > MAX_MONEY_AMOUNT) {
+      errors.push("El efectivo recibido es demasiado alto.");
     }
     if (payment.method === "CASH" && Number(payment.receivedAmount || 0) < payment.amount) {
       errors.push("El efectivo recibido no cubre el pago en efectivo.");
@@ -130,6 +150,7 @@ export function validatePayments(total: number, payments: PaymentInput[]) {
 export function validateCheckout(input: CheckoutInput) {
   const errors: string[] = [];
   if (input.itemCount <= 0) errors.push("Agrega productos al carrito.");
+  if (input.itemCount > MAX_CART_LINES) errors.push(`El carrito permite maximo ${MAX_CART_LINES} lineas.`);
   if (!isValidMoney(input.total) || input.total <= 0) errors.push("El total debe ser mayor a cero para cobrar.");
   return [...errors, ...validatePayments(input.total, input.payments)];
 }
@@ -200,9 +221,13 @@ export function roundMoney(value: number) {
 }
 
 function isValidMoney(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
+  return typeof value === "number" && Number.isFinite(value) && hasMoneyPrecision(value);
 }
 
 function isValidPaymentMethod(value: unknown): value is PaymentInput["method"] {
   return value === "CASH" || value === "CARD" || value === "TRANSFER";
+}
+
+function hasMoneyPrecision(value: number) {
+  return Math.abs(value * 100 - Math.round(value * 100)) < 1e-9;
 }

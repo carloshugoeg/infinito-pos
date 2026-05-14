@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chooseRemovalMode, normalizeBranchCode, normalizeFormText, parseReportDateRange } from "@/server/admin-crud";
+import { chooseRemovalMode, normalizeBranchCode, normalizeFormText, parseNumberField, parseReportDateRange } from "@/server/admin-crud";
 
 describe("admin CRUD helpers", () => {
   it("normalizes text fields with fallback values", () => {
@@ -15,6 +15,13 @@ describe("admin CRUD helpers", () => {
   it("chooses soft deletion when a record already has history", () => {
     expect(chooseRemovalMode(0)).toBe("delete");
     expect(chooseRemovalMode(2)).toBe("deactivate");
+  });
+
+  it("parsea campos numericos con limites de negocio", () => {
+    expect(parseNumberField("12.50", "Precio", { min: 0, decimals: 2 })).toBe(12.5);
+    expect(() => parseNumberField("-1", "Precio", { min: 0 })).toThrow("Precio no puede ser menor que 0.");
+    expect(() => parseNumberField("1.999", "Precio", { decimals: 2 })).toThrow("Precio permite maximo 2 decimales.");
+    expect(() => parseNumberField("1.5", "Orden", { integer: true })).toThrow("Orden debe ser un entero.");
   });
 
   it("parses report dates as an inclusive day range", () => {

@@ -6,7 +6,9 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { toNumber } from "@/lib/utils";
 import { getActiveBranch, requireUser } from "@/server/auth";
-import { calculateCashSessionSummary } from "@/domain/cash";
+import { prepareCashSessionClose } from "@/server/services/cash";
+import { validateCashSessionAmounts } from "@/domain/cash";
+import { sanitizeOrderNote } from "@/domain/cart";
 
 export async function getOpenCashSession(branchId: string) {
   return prisma.cashSession.findFirst({
@@ -19,13 +21,16 @@ export async function openCashSessionAction(formData: FormData) {
   const { user, branch } = await getActiveBranch();
   const existing = await getOpenCashSession(branch.id);
   if (existing) redirect("/kiosk");
+  const openingAmount = Number(formData.get("openingAmount") || 0);
+  const validationErrors = validateCashSessionAmounts({ openingAmount });
+  if (validationErrors.length) throw new Error(validationErrors.join(" "));
 
   await prisma.cashSession.create({
     data: {
       branchId: branch.id,
       openedById: user.id,
-      openingAmount: Number(formData.get("openingAmount") || 0),
-      notes: String(formData.get("notes") || "").trim() || null
+      openingAmount,
+      notes: sanitizeOrderNote(formData.get("notes"), 250) || null
     }
   });
 
@@ -48,9 +53,11 @@ export async function closeCashSessionAction(formData: FormData) {
   });
 
   const closingAmount = Number(formData.get("closingAmount") || 0);
-  const summary = calculateCashSessionSummary({
+  const close = prepareCashSessionClose({
     openingAmount: toNumber(cashSession.openingAmount),
     closingAmount,
+    existingNotes: cashSession.notes,
+    submittedNotes: sanitizeOrderNote(formData.get("notes"), 250),
     payments: payments.map((payment) => ({
       method: payment.method,
       amount: toNumber(payment.amount),
@@ -64,10 +71,10 @@ export async function closeCashSessionAction(formData: FormData) {
       status: CashSessionStatus.CLOSED,
       closedById: user.id,
       closingAmount,
-      expectedCashAmount: summary.expectedCashAmount,
-      cashDifference: summary.cashDifference,
+      expectedCashAmount: close.summary.expectedCashAmount,
+      cashDifference: close.summary.cashDifference,
       closedAt: new Date(),
-      notes: String(formData.get("notes") || cashSession.notes || "").trim() || null
+      notes: close.notes
     }
   });
 

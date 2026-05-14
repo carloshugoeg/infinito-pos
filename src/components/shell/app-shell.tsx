@@ -1,19 +1,22 @@
+import { UserRole } from "@prisma/client";
 import Link from "next/link";
 import { BarChart3, Grid2X2, LayoutDashboard, LogOut, Settings, WalletCards } from "lucide-react";
 import { logoutAction } from "@/server/actions/auth-actions";
 import { Button } from "@/components/ui/button";
 import { getAppSettings } from "@/server/queries/settings";
+import { requireUser } from "@/server/auth";
 
 const links = [
-  ["Kiosco", "/kiosk", LayoutDashboard],
-  ["Admin", "/admin", Grid2X2],
-  ["Caja", "/cash/close", WalletCards],
-  ["Reportes", "/admin/reports", BarChart3],
-  ["Ajustes", "/admin/settings", Settings]
+  ["Kiosco", "/kiosk", LayoutDashboard, "all"],
+  ["Caja", "/cash/close", WalletCards, "all"],
+  ["Administracion", "/admin", Grid2X2, "admin"],
+  ["Reportes", "/admin/reports", BarChart3, "admin"],
+  ["Ajustes", "/admin/settings", Settings, "admin"]
 ] as const;
 
 export async function AppShell({ children, title }: { children: React.ReactNode; title: string }) {
-  const settings = await getAppSettings();
+  const [settings, { user }] = await Promise.all([getAppSettings(), requireUser()]);
+  const visibleLinks = links.filter(([, , , audience]) => audience === "all" || user.role === UserRole.ADMIN);
 
   return (
     <div className="min-h-screen p-3 text-[var(--foreground)] lg:p-5">
@@ -36,7 +39,7 @@ export async function AppShell({ children, title }: { children: React.ReactNode;
         </div>
 
         <nav className="mt-4 flex gap-2 overflow-x-auto [scrollbar-width:none] lg:mt-12 lg:flex-col lg:overflow-visible [&::-webkit-scrollbar]:hidden">
-          {links.map(([label, href, Icon]) => (
+          {visibleLinks.map(([label, href, Icon]) => (
             <Link
               key={href}
               href={href}

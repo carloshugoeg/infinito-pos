@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isLowOrNegativeStock, resolveOrderIngredientUsage } from "@/domain/inventory";
+import { calculateManualInventoryDelta, isLowOrNegativeStock, resolveOrderIngredientUsage, validateManualInventoryMovement } from "@/domain/inventory";
 
 describe("inventory domain", () => {
   it("resuelve uso de ingredientes por producto y modificadores", () => {
@@ -23,5 +23,14 @@ describe("inventory domain", () => {
     expect(isLowOrNegativeStock(-5, 10)).toBe(true);
     expect(isLowOrNegativeStock(8, 10)).toBe(true);
     expect(isLowOrNegativeStock(12, 10)).toBe(false);
+  });
+
+  it("valida movimientos manuales de inventario", () => {
+    expect(validateManualInventoryMovement({ type: "PURCHASE", quantity: 5 })).toEqual([]);
+    expect(calculateManualInventoryDelta("WASTE", 2)).toBe(-2);
+    expect(validateManualInventoryMovement({ type: "SALE", quantity: 1 })).toContain("Tipo de movimiento invalido.");
+    expect(validateManualInventoryMovement({ type: "WASTE", quantity: -1 })).toContain("Compra y merma requieren una cantidad mayor a cero.");
+    expect(validateManualInventoryMovement({ type: "ADJUSTMENT", quantity: 0 })).toContain("El ajuste no puede ser cero.");
+    expect(validateManualInventoryMovement({ type: "PURCHASE", quantity: 1.1234 })).toContain("La cantidad permite maximo 3 decimales.");
   });
 });

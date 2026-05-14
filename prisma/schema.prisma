@@ -305,5 +305,6 @@ model AppSettings {
   backgroundColor  String   @default("#ffe2d2")
   logoUrl          String?
   currencySymbol   String   @default("Q")
+  modifierGridEnabled Boolean @default(false)
   updatedAt        DateTime @updatedAt
 }

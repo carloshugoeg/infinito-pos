@@ -64,7 +64,7 @@ Formato obligatorio por task/subtask: `Estado | Task | Codificado | Revisado | T
 | [x] | T6.1 Crear orden pagada | Si | Si | Si | Con transaccion, inventario y redirect unico por orden. |
 | [x] | T6.2 Mostrar pedidos activos en `/kiosk` | Si | Si | Si | Estados activos. |
 | [x] | T6.3 Cambiar estados paid -> preparing -> ready -> delivered | Si | Si | Si | Server action. |
-| [x] | T6.4 Cancelar orden con razon y permisos | Si | Si | Si | Cancelacion simple. |
+| [x] | T6.4 Cancelar orden con razon y permisos | Si | Si | Si | Cancelacion limitada a sucursal activa; bloquea ordenes cerradas. |
 | [x] | T7 - Inventario | Si | Si | Si | Descuento y movimientos. |
 | [x] | T7.1 Descontar receta al pagar | Si | Si | Si | Unit-tested resolucion de uso. |
 | [x] | T7.2 Registrar movimientos de venta | Si | Si | Si | Tipo SALE. |
@@ -77,12 +77,12 @@ Formato obligatorio por task/subtask: `Estado | Task | Codificado | Revisado | T
 | [x] | T8.3 Productos mas vendidos | Si | Si | Si | Group by snapshot. |
 | [x] | T8.4 Modificadores/toppings mas usados | Si | Si | Si | Group by snapshot. |
 | [x] | T8.5 Exportacion CSV opcional | Si | Si | Si | Exporta ordenes/items/pagos por rango de fechas. |
-| [~] | T9 - QA y polish | Parcial | Si | Parcial | Unit tests y typecheck pasan; suite logica, hidratacion, rediseño visual y UX de cobro agregados. |
+| [x] | T9 - QA y polish | Si | Si | Si | Tests, lint, typecheck, build y smoke browser tablet pasan. |
 | [x] | T9.1 Pruebas unitarias de totales, modificadores e inventario | Si | Si | Si | 6 tests pasan. |
-| [ ] | T9.2 Pruebas de integracion para crear orden y cerrar caja | No | No | No |  |
-| [ ] | T9.3 Prueba manual de flujo completo en tablet viewport | No | No | No |  |
-| [ ] | T9.4 Revision de UI 100% espanol | No | No | No |  |
-| [ ] | T9.5 Verificacion de que no se puede vender sin caja abierta | No | No | No |  |
+| [x] | T9.2 Pruebas de integracion para crear orden y cerrar caja | Si | Si | Si | Servicios de orden pagada/cierre cubren totales, pagos e inventario negativo. |
+| [x] | T9.3 Prueba manual de flujo completo en tablet viewport | Si | Si | Si | Browser smoke 768x1024 verifica redirect a abrir caja y layout tablet. |
+| [x] | T9.4 Revision de UI 100% espanol | Si | Si | Si | Enums visibles y etiquetas de ajustes traducidas. |
+| [x] | T9.5 Verificacion de que no se puede vender sin caja abierta | Si | Si | Si | `/kiosk` redirige a `/cash/open` sin caja abierta. |
 | [x] | T9.6 Suite logica de caos para pagos, sanitizacion y preparacion | Si | Si | Si | 9 tests de dominio; servidor/UI conectados a validaciones puras. |
 | [x] | T9.7 Correccion de hidratacion en hora de caja | Si | Si | Si | Reemplaza `toLocaleTimeString` por formateo estable para Guatemala. |
 | [x] | T9.8 Rediseño soft UI pastel azul para kiosco | Si | Si | Si | Sidebar, catalogo tactil, chips de personalizacion y panel de cobro/carrito verificados en Chrome headless. |
@@ -91,12 +91,19 @@ Formato obligatorio por task/subtask: `Estado | Task | Codificado | Revisado | T
 | [x] | T9.11 QA persistencia DB y limpieza lint | Si | Si | Si | Marcador de persistencia creado y verificado tras reinicio; lint/typecheck/tests/build OK. |
 | [x] | T9.12 Ajustes dentro del shell principal | Si | Si | Si | `/admin/settings` usa `AppShell`; lint, typecheck, tests y `next build` OK. |
 | [x] | T9.13 CRUD administrativo global | Si | Si | Si | Sucursales/usuarios con edicion inline y activar/desactivar; helpers unit-tested. |
+| [x] | T9.14 Reticula tactil opcional para modificadores | Si | Si | Si | Ajuste global activa tarjetas grandes en kiosco; migracion, Prisma generate, lint/typecheck y QA browser OK. |
+| [x] | T9.15 Robustez contra entradas y estados incoherentes | Si | Si | Si | Bloquea modificadores/pagos duplicados, sobrepagos sin efectivo, cantidades imposibles, montos invalidos de caja, estados invalidos y movimientos manuales incoherentes; tests, lint, typecheck y build OK. |
 | [~] | T10 - Compatibilidad flujo Excel actual | Parcial | Si | Parcial | Basado en `Control ventas - Infinito .xlsx`. |
 | [x] | T10.1 Inspeccionar hojas `Tabla datos` y `Diario ventas` | Si | Si | Si | 2 hojas, 41 columnas historicas y resumen diario. |
 | [x] | T10.2 Agregar telefono de cliente a orden/cliente | Si | Si | Si | Campo `customerPhone` en orden y `phone` en cliente. |
 | [x] | T10.3 Seed de catalogo empirico del kiosco | Si | Si | Si | Vaso, bases, toppings, extras y accesorios del Excel. |
 | [x] | T10.4 Reporte diario estilo Excel | Si | Si | Si | Conteos por metodo y totales por seccion. |
-| [ ] | T10.5 Exportacion/importacion historica Excel | No | No | No | Pendiente si se necesita migrar historial. |
+| [ ] | T10.5 Exportacion/importacion historica Excel | No | No | No | Post-launch opcional; no bloquea piloto V1. |
+| [x] | T11 - Pilot launch readiness | Si | Si | Si | Objetivo: piloto single-branch; verificado con Postgres local aislado. |
+| [x] | T11.1 Permisos administrativos y navegacion por rol | Si | Si | Si | Operador conserva kiosco/caja/preparacion; admin ve back-office/reportes/ajustes. |
+| [x] | T11.2 Documentar env, setup y checklist piloto | Si | Si | Si | README actualizado con variables, comandos, backups y rutina diaria. |
+| [x] | T11.3 Verificar `next build` con base de datos real | Si | Si | Si | `npm run build` pasa contra Postgres local en `localhost:55432`. |
+| [x] | T11.4 Smoke test browser tablet del piloto | Si | Si | Si | Login -> caja -> venta -> preparacion -> cierre -> reporte verificado. |
 
 ## Hallazgos Del Excel Operativo
 

@@ -13,4 +13,8 @@ describe("order status domain", () => {
     expect(validateOrderStatusTransition("CANCELLED", "PREPARING")).toContain("No se puede cambiar una orden cerrada.");
     expect(validateOrderStatusTransition("DELIVERED", "READY")).toContain("No se puede cambiar una orden cerrada.");
   });
+
+  it("rechaza estados que no pertenecen al flujo", () => {
+    expect(validateOrderStatusTransition("PAID", "REFUNDED" as "PAID")).toContain("Estado de orden invalido.");
+  });
 });

@@ -49,11 +49,13 @@ describe("cart domain", () => {
   it("valida grupos obligatorios y limites", () => {
     expect(validateModifierSelections(product, [])).toContain("Selecciona Chocolate.");
     expect(validateModifierSelections(product, ["white", "dark"])).toContain("Chocolate permite maximo 1.");
+    expect(validateModifierSelections(product, ["white", "oreo", "oreo"])).toContain("No repitas el mismo modificador.");
     expect(validateModifierSelections(product, ["white", "oreo", "peanut"])).toEqual([]);
   });
 
   it("calcula totales con modificadores y cantidad", () => {
     expect(calculateCartItemTotal(product, ["white", "oreo"], 2)).toBe(60);
+    expect(calculateCartItemTotal(product, ["white", "oreo", "oreo"], 2)).toBe(60);
     expect(calculateOrderTotals([{ lineTotal: 60 }, { lineTotal: 25 }]).total).toBe(85);
   });
 
@@ -61,6 +63,8 @@ describe("cart domain", () => {
     expect(validatePayments(85, [{ method: "CASH", amount: 50, receivedAmount: 100 }, { method: "TRANSFER", amount: 35 }])).toEqual([]);
     expect(calculateCashChange({ method: "CASH", amount: 50, receivedAmount: 100 })).toBe(50);
     expect(validatePayments(85, [{ method: "CARD", amount: 20 }])).toContain("El monto pagado es menor al total.");
+    expect(validatePayments(85, [{ method: "CARD", amount: 90 }])).toContain("El monto pagado no debe superar el total.");
+    expect(validatePayments(85, [{ method: "CARD", amount: 45 }, { method: "CARD", amount: 40 }])).toContain("Usa un solo registro por metodo de pago.");
   });
 
   it("no calcula vuelto si no hay efectivo aplicado", () => {
@@ -98,6 +102,7 @@ describe("cart domain", () => {
     expect(validatePayments(60, [{ method: "CASH", amount: Number.POSITIVE_INFINITY, receivedAmount: Number.POSITIVE_INFINITY }])).toContain(
       "El monto del pago debe ser un numero valido."
     );
+    expect(validatePayments(60, [{ method: "CASH", amount: 59.999, receivedAmount: 100 }])).toContain("El monto del pago debe ser un numero valido.");
     expect(validatePayments(60, [{ method: "BITCOIN" as "CASH", amount: 60 }])).toContain("Metodo de pago invalido.");
     expect(validatePayments(60, [{ method: "CASH", amount: 59.99, receivedAmount: 100 }])).toContain("El monto pagado es menor al total.");
   });

@@ -5,7 +5,8 @@ import { InventoryMovementType, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { chooseRemovalMode, normalizeBranchCode, normalizeFormText } from "@/server/admin-crud";
+import { calculateManualInventoryDelta, isManualInventoryMovementType, validateManualInventoryMovement } from "@/domain/inventory";
+import { chooseRemovalMode, normalizeBranchCode, normalizeFormText, parseNumberField } from "@/server/admin-crud";
 import { getActiveBranch, requireRole } from "@/server/auth";
 
 export async function createBranchAction(formData: FormData) {
@@ -123,8 +124,8 @@ export async function createProductAction(formData: FormData) {
     data: {
       name: normalizeFormText(formData.get("name")),
       description: normalizeFormText(formData.get("description")) || null,
-      basePrice: Number(formData.get("basePrice") || 0),
-      sortOrder: Number(formData.get("sortOrder") || 0)
+      basePrice: parseNumberField(formData.get("basePrice"), "Precio base", { fallback: 0, min: 0, max: 999_999.99, decimals: 2 }),
+      sortOrder: parseNumberField(formData.get("sortOrder"), "Orden", { fallback: 0, min: 0, max: 100_000, integer: true })
     }
   });
   revalidatePath("/admin/catalog");
@@ -137,8 +138,8 @@ export async function updateProductAction(formData: FormData) {
     data: {
       name: normalizeFormText(formData.get("name")),
       description: normalizeFormText(formData.get("description")) || null,
-      basePrice: Number(formData.get("basePrice") || 0),
-      sortOrder: Number(formData.get("sortOrder") || 0)
+      basePrice: parseNumberField(formData.get("basePrice"), "Precio base", { fallback: 0, min: 0, max: 999_999.99, decimals: 2 }),
+      sortOrder: parseNumberField(formData.get("sortOrder"), "Orden", { fallback: 0, min: 0, max: 100_000, integer: true })
     }
   });
   revalidatePath("/admin/catalog");
@@ -172,15 +173,25 @@ export async function removeProductAction(formData: FormData) {
 
 export async function createModifierGroupAction(formData: FormData) {
   await requireRole([UserRole.ADMIN]);
-  const minSelections = Number(formData.get("minSelections") || 0);
+  const isRequired = formData.get("isRequired") === "on";
+  const minSelections = Math.max(
+    isRequired ? 1 : 0,
+    parseNumberField(formData.get("minSelections"), "Minimo de selecciones", { fallback: 0, min: 0, max: 99, integer: true })
+  );
+  const maxSelections = parseNumberField(formData.get("maxSelections"), "Maximo de selecciones", {
+    fallback: Math.max(1, minSelections),
+    min: minSelections,
+    max: 99,
+    integer: true
+  });
   await prisma.modifierGroup.create({
     data: {
       productId: normalizeFormText(formData.get("productId")),
       name: normalizeFormText(formData.get("name")),
-      isRequired: formData.get("isRequired") === "on",
+      isRequired,
       minSelections,
-      maxSelections: Number(formData.get("maxSelections") || Math.max(1, minSelections)),
-      sortOrder: Number(formData.get("sortOrder") || 0)
+      maxSelections,
+      sortOrder: parseNumberField(formData.get("sortOrder"), "Orden", { fallback: 0, min: 0, max: 100_000, integer: true })
     }
   });
   revalidatePath("/admin/catalog");
@@ -188,15 +199,25 @@ export async function createModifierGroupAction(formData: FormData) {
 
 export async function updateModifierGroupAction(formData: FormData) {
   await requireRole([UserRole.ADMIN]);
-  const minSelections = Number(formData.get("minSelections") || 0);
+  const isRequired = formData.get("isRequired") === "on";
+  const minSelections = Math.max(
+    isRequired ? 1 : 0,
+    parseNumberField(formData.get("minSelections"), "Minimo de selecciones", { fallback: 0, min: 0, max: 99, integer: true })
+  );
+  const maxSelections = parseNumberField(formData.get("maxSelections"), "Maximo de selecciones", {
+    fallback: Math.max(1, minSelections),
+    min: minSelections,
+    max: 99,
+    integer: true
+  });
   await prisma.modifierGroup.update({
     where: { id: normalizeFormText(formData.get("id")) },
     data: {
       name: normalizeFormText(formData.get("name")),
-      isRequired: formData.get("isRequired") === "on",
+      isRequired,
       minSelections,
-      maxSelections: Number(formData.get("maxSelections") || Math.max(1, minSelections)),
-      sortOrder: Number(formData.get("sortOrder") || 0)
+      maxSelections,
+      sortOrder: parseNumberField(formData.get("sortOrder"), "Orden", { fallback: 0, min: 0, max: 100_000, integer: true })
     }
   });
   revalidatePath("/admin/catalog");
@@ -234,8 +255,8 @@ export async function createModifierAction(formData: FormData) {
     data: {
       modifierGroupId: normalizeFormText(formData.get("modifierGroupId")),
       name: normalizeFormText(formData.get("name")),
-      priceDelta: Number(formData.get("priceDelta") || 0),
-      sortOrder: Number(formData.get("sortOrder") || 0)
+      priceDelta: parseNumberField(formData.get("priceDelta"), "Precio extra", { fallback: 0, min: 0, max: 999_999.99, decimals: 2 }),
+      sortOrder: parseNumberField(formData.get("sortOrder"), "Orden", { fallback: 0, min: 0, max: 100_000, integer: true })
     }
   });
   revalidatePath("/admin/catalog");
@@ -247,8 +268,8 @@ export async function updateModifierAction(formData: FormData) {
     where: { id: normalizeFormText(formData.get("id")) },
     data: {
       name: normalizeFormText(formData.get("name")),
-      priceDelta: Number(formData.get("priceDelta") || 0),
-      sortOrder: Number(formData.get("sortOrder") || 0)
+      priceDelta: parseNumberField(formData.get("priceDelta"), "Precio extra", { fallback: 0, min: 0, max: 999_999.99, decimals: 2 }),
+      sortOrder: parseNumberField(formData.get("sortOrder"), "Orden", { fallback: 0, min: 0, max: 100_000, integer: true })
     }
   });
   revalidatePath("/admin/catalog");
@@ -286,8 +307,8 @@ export async function createIngredientAction(formData: FormData) {
     data: {
       name: normalizeFormText(formData.get("name")),
       unit: normalizeFormText(formData.get("unit")),
-      costPerUnit: Number(formData.get("costPerUnit") || 0),
-      lowStockThreshold: Number(formData.get("lowStockThreshold") || 0)
+      costPerUnit: parseNumberField(formData.get("costPerUnit"), "Costo unitario", { fallback: 0, min: 0, max: 999_999.999, decimals: 3 }),
+      lowStockThreshold: parseNumberField(formData.get("lowStockThreshold"), "Umbral bajo", { fallback: 0, min: 0, max: 999_999.999, decimals: 3 })
     }
   });
   revalidatePath("/admin/ingredients");
@@ -300,8 +321,8 @@ export async function updateIngredientAction(formData: FormData) {
     data: {
       name: normalizeFormText(formData.get("name")),
       unit: normalizeFormText(formData.get("unit")),
-      costPerUnit: Number(formData.get("costPerUnit") || 0),
-      lowStockThreshold: Number(formData.get("lowStockThreshold") || 0)
+      costPerUnit: parseNumberField(formData.get("costPerUnit"), "Costo unitario", { fallback: 0, min: 0, max: 999_999.999, decimals: 3 }),
+      lowStockThreshold: parseNumberField(formData.get("lowStockThreshold"), "Umbral bajo", { fallback: 0, min: 0, max: 999_999.999, decimals: 3 })
     }
   });
   revalidatePath("/admin/ingredients");
@@ -342,7 +363,7 @@ export async function createRecipeItemAction(formData: FormData) {
       productId: ownerType === "product" ? ownerId : null,
       modifierId: ownerType === "modifier" ? ownerId : null,
       ingredientId: normalizeFormText(formData.get("ingredientId")),
-      quantity: Number(formData.get("quantity") || 0)
+      quantity: parseNumberField(formData.get("quantity"), "Cantidad de receta", { min: 0.001, max: 999_999.999, decimals: 3 })
     }
   });
   revalidatePath("/admin/catalog");
@@ -354,7 +375,7 @@ export async function updateRecipeItemAction(formData: FormData) {
     where: { id: normalizeFormText(formData.get("id")) },
     data: {
       ingredientId: normalizeFormText(formData.get("ingredientId")),
-      quantity: Number(formData.get("quantity") || 0)
+      quantity: parseNumberField(formData.get("quantity"), "Cantidad de receta", { min: 0.001, max: 999_999.999, decimals: 3 })
     }
   });
   revalidatePath("/admin/catalog");
@@ -369,11 +390,14 @@ export async function removeRecipeItemAction(formData: FormData) {
 }
 
 export async function recordInventoryMovementAction(formData: FormData) {
+  await requireRole([UserRole.ADMIN]);
   const { user, branch } = await getActiveBranch();
   const ingredientId = normalizeFormText(formData.get("ingredientId"));
-  const type = normalizeFormText(formData.get("type"), "ADJUSTMENT") as InventoryMovementType;
-  const quantity = Number(formData.get("quantity") || 0);
-  const quantityDelta = type === InventoryMovementType.WASTE ? -Math.abs(quantity) : quantity;
+  const type = normalizeFormText(formData.get("type"), "ADJUSTMENT");
+  const quantity = parseNumberField(formData.get("quantity"), "Cantidad", { min: -999_999.999, max: 999_999.999, decimals: 3 });
+  const movementErrors = validateManualInventoryMovement({ type, quantity });
+  if (movementErrors.length || !isManualInventoryMovementType(type)) throw new Error(movementErrors.join(" "));
+  const quantityDelta = calculateManualInventoryDelta(type, quantity);
 
   await prisma.$transaction(async (tx) => {
     await tx.branchInventory.upsert({
@@ -385,7 +409,7 @@ export async function recordInventoryMovementAction(formData: FormData) {
       data: {
         branchId: branch.id,
         ingredientId,
-        type,
+        type: type as InventoryMovementType,
         quantityDelta,
         reason: normalizeFormText(formData.get("reason"), type),
         createdById: user.id
@@ -397,6 +421,7 @@ export async function recordInventoryMovementAction(formData: FormData) {
 }
 
 export async function reverseInventoryMovementAction(formData: FormData) {
+  await requireRole([UserRole.ADMIN]);
   const { user, branch } = await getActiveBranch();
   const id = normalizeFormText(formData.get("id"));
   const movement = await prisma.inventoryMovement.findFirst({
@@ -439,18 +464,21 @@ export async function updateAppSettingsAction(formData: FormData) {
       companyName: normalizeFormText(formData.get("companyName"), "Koi POS"),
       accentColor: normalizeFormText(formData.get("accentColor"), "#ff9766"),
       backgroundColor: normalizeFormText(formData.get("backgroundColor"), "#fdfaf8"),
-      currencySymbol: normalizeFormText(formData.get("currencySymbol"), "Q")
+      currencySymbol: normalizeFormText(formData.get("currencySymbol"), "Q"),
+      modifierGridEnabled: formData.get("modifierGridEnabled") === "on"
     },
     create: {
       id: "global",
       companyName: normalizeFormText(formData.get("companyName"), "Koi POS"),
       accentColor: normalizeFormText(formData.get("accentColor"), "#ff9766"),
       backgroundColor: normalizeFormText(formData.get("backgroundColor"), "#fdfaf8"),
-      currencySymbol: normalizeFormText(formData.get("currencySymbol"), "Q")
+      currencySymbol: normalizeFormText(formData.get("currencySymbol"), "Q"),
+      modifierGridEnabled: formData.get("modifierGridEnabled") === "on"
     }
   });
   revalidatePath("/");
   revalidatePath("/admin/settings");
+  revalidatePath("/kiosk");
 }
 
 export async function requireAdminForPage() {
