@@ -226,11 +226,11 @@ export function KioskClient({
                 </p>
               </div>
               <div className="flex items-center rounded-full bg-[var(--muted)] p-1">
-                <Button type="button" size="icon" variant="ghost" className="rounded-full" onClick={() => setQuantity((value) => Math.max(1, value - 1))}>
+                <Button data-testid="qty-minus" type="button" size="icon" variant="ghost" className="rounded-full" onClick={() => setQuantity((value) => Math.max(1, value - 1))}>
                   <Minus size={16} />
                 </Button>
                 <strong className="w-10 text-center text-lg">{quantity}</strong>
-                <Button type="button" size="icon" variant="ghost" className="rounded-full" onClick={() => setQuantity((value) => Math.min(MAX_ITEM_QUANTITY, value + 1))}>
+                <Button data-testid="qty-plus" type="button" size="icon" variant="ghost" className="rounded-full" onClick={() => setQuantity((value) => Math.min(MAX_ITEM_QUANTITY, value + 1))}>
                   <Plus size={16} />
                 </Button>
               </div>
@@ -322,7 +322,7 @@ export function KioskClient({
                     {editingCartItem ? "Guardar" : "Agregar"}
                   </Button>
                   {editingCartItem ? (
-                    <Button type="button" variant="ghost" onClick={resetBuilder}>
+                    <Button data-testid="edit-cancel" type="button" variant="ghost" onClick={resetBuilder}>
                       Cancelar
                     </Button>
                   ) : null}
@@ -397,10 +397,10 @@ export function KioskClient({
                       </p>
                     </div>
                     <div className="flex shrink-0 gap-1">
-                      <Button size="icon" variant="ghost" className="size-8 rounded-full" onClick={() => startEditingItem(item)}>
+                      <Button data-testid="cart-edit" size="icon" variant="ghost" className="size-8 rounded-full" onClick={() => startEditingItem(item)}>
                         <Pencil size={14} />
                       </Button>
-                      <Button size="icon" variant="ghost" className="size-8 rounded-full text-[var(--danger)]" onClick={() => setCart((current) => current.filter((candidate) => candidate.localId !== item.localId))}>
+                      <Button data-testid="cart-delete" size="icon" variant="ghost" className="size-8 rounded-full text-[var(--danger)]" onClick={() => setCart((current) => current.filter((candidate) => candidate.localId !== item.localId))}>
                         <Trash2 size={14} />
                       </Button>
                     </div>
@@ -410,7 +410,7 @@ export function KioskClient({
               ))}
               <div className="mt-2 rounded-[2rem] bg-[var(--foreground)] p-6 text-white shadow-lg">
                 <div className="text-xs font-bold uppercase tracking-wider opacity-60 mb-1">Total a pagar</div>
-                <div className="font-display text-4xl font-black">{formatCurrency(totals.total)}</div>
+                <div data-testid="cart-total" className="font-display text-4xl font-black">{formatCurrency(totals.total)}</div>
               </div>
             </div>
           </div>
@@ -448,6 +448,7 @@ export function KioskClient({
                       <Input
                         type="text"
                         inputMode="decimal"
+                        name="cashAmount"
                         value={cashDraft}
                         className="rounded-xl border-none bg-white text-center font-bold"
                         placeholder="0.00"
@@ -462,6 +463,7 @@ export function KioskClient({
                       <Input
                         type="text"
                         inputMode="decimal"
+                        name="cardAmount"
                         value={cardDraft}
                         className="rounded-xl border-none bg-white text-center font-bold"
                         placeholder="0.00"
@@ -476,6 +478,7 @@ export function KioskClient({
                       <Input
                         type="text"
                         inputMode="decimal"
+                        name="transferAmount"
                         value={transferDraft}
                         className="rounded-xl border-none bg-white text-center font-bold"
                         placeholder="0.00"
