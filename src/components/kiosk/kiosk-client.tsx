@@ -34,7 +34,7 @@ type CartItem = {
 
 type ActiveOrder = {
   id: string;
-  status: "PAID" | "PREPARING" | "READY" | "DELIVERED" | "CANCELLED";
+  status: "PENDING" | "PREPARING" | "DELIVERED" | "CANCELLED";
   total: number;
   customerName: string;
   paidAt: string;
@@ -200,11 +200,10 @@ export function KioskClient({
                   <div className="flex h-full flex-col justify-between gap-5">
                     <div>
                       <div className="mb-3 flex items-center gap-2">
-                        <span className={`grid size-12 place-items-center rounded-2xl font-display text-xl font-black transition ${active ? "bg-white/20 text-white" : "bg-[var(--soft-mint)] text-[var(--foreground)] group-hover:bg-[var(--primary)] group-hover:text-white"
+                        <span className={`grid size-12 place-items-center rounded-2xl font-display text-xl font-black transition ${active ? "bg-white/20 text-white" : "bg-[var(--primary)]/10 text-[var(--primary)] group-hover:bg-[var(--primary)] group-hover:text-white"
                           }`}>
                           {product.name.slice(0, 1)}
                         </span>
-                        <div className={`h-2 w-12 rounded-full transition ${active ? "bg-white/30" : "bg-[var(--accent)] group-hover:bg-[var(--primary)]"}`} />
                       </div>
                       <div className="font-display text-xl font-black tracking-tight">{product.name}</div>
                     </div>
@@ -278,12 +277,11 @@ export function KioskClient({
                                 <span className="flex items-start justify-between gap-3">
                                   <span
                                     className={`grid size-14 shrink-0 place-items-center rounded-2xl font-display text-2xl font-black transition ${
-                                      active ? "bg-white/20 text-white" : "bg-[var(--soft-mint)] text-[var(--foreground)] group-hover/tile:bg-[var(--primary)] group-hover/tile:text-white"
+                                      active ? "bg-white/20 text-white" : "bg-[var(--primary)]/10 text-[var(--primary)] group-hover/tile:bg-[var(--primary)] group-hover/tile:text-white"
                                     }`}
                                   >
                                     {modifier.name.slice(0, 1)}
                                   </span>
-                                  <span className={`h-2 min-w-10 flex-1 rounded-full ${active ? "bg-white/30" : "bg-[var(--accent)]/70"}`} />
                                 </span>
                                 <span>
                                   <span className="block text-lg font-black leading-tight sm:text-xl">{modifier.name}</span>
@@ -532,25 +530,22 @@ function modifierGridClass(count: number) {
 
 function statusLabel(status: ActiveOrder["status"]) {
   return {
-    PAID: "Pagado",
+    PENDING: "Pendiente",
     PREPARING: "Preparando",
-    READY: "Listo",
     DELIVERED: "Entregado",
     CANCELLED: "Cancelado"
   }[status];
 }
 
 function nextStatus(status: ActiveOrder["status"]) {
-  if (status === "PAID") return "PREPARING";
-  if (status === "PREPARING") return "READY";
-  if (status === "READY") return "DELIVERED";
+  if (status === "PENDING") return "PREPARING";
+  if (status === "PREPARING") return "DELIVERED";
   return "";
 }
 
 function nextStatusLabel(status: ActiveOrder["status"]) {
-  if (status === "PAID") return "Preparar";
-  if (status === "PREPARING") return "Listo";
-  if (status === "READY") return "Entregar";
+  if (status === "PENDING") return "Preparar";
+  if (status === "PREPARING") return "Entregar";
   return "";
 }
 

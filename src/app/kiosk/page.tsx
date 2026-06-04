@@ -15,7 +15,7 @@ export default async function KioskPage() {
   const activeOrders = await prisma.order.findMany({
     where: {
       branchId: branch.id,
-      status: { in: [OrderStatus.PAID, OrderStatus.PREPARING, OrderStatus.READY] }
+      status: { in: [OrderStatus.PENDING, OrderStatus.PREPARING] }
     },
     orderBy: { createdAt: "asc" },
     include: {

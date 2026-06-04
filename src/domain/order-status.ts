@@ -1,11 +1,10 @@
-export type OrderStatusValue = "PAID" | "PREPARING" | "READY" | "DELIVERED" | "CANCELLED";
+export type OrderStatusValue = "PENDING" | "PREPARING" | "DELIVERED" | "CANCELLED";
 
-const orderStatuses: OrderStatusValue[] = ["PAID", "PREPARING", "READY", "DELIVERED", "CANCELLED"];
+const orderStatuses: OrderStatusValue[] = ["PENDING", "PREPARING", "DELIVERED", "CANCELLED"];
 
 const nextStatusByCurrent: Partial<Record<OrderStatusValue, OrderStatusValue>> = {
-  PAID: "PREPARING",
-  PREPARING: "READY",
-  READY: "DELIVERED"
+  PENDING: "PREPARING",
+  PREPARING: "DELIVERED"
 };
 
 export function validateOrderStatusTransition(currentStatus: OrderStatusValue, nextStatus: OrderStatusValue) {
@@ -17,8 +16,8 @@ export function validateOrderStatusTransition(currentStatus: OrderStatusValue, n
     return ["No se puede cambiar una orden cerrada."];
   }
 
-  if (nextStatus === "DELIVERED" && currentStatus !== "READY") {
-    return ["La orden debe estar lista antes de entregarse."];
+  if (nextStatus === "DELIVERED" && currentStatus !== "PREPARING") {
+    return ["La orden debe estar en preparacion antes de entregarse."];
   }
 
   if (nextStatusByCurrent[currentStatus] !== nextStatus) {

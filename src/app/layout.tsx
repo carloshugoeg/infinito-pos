@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Nunito } from "next/font/google";
 import "./globals.css";
 import { getAppSettings } from "@/server/queries/settings";
+import { getContrastYIQ } from "@/lib/utils";
 
 const sans = Nunito({
   subsets: ["latin"],
@@ -25,6 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const settings = await getAppSettings();
+  const primaryForeground = getContrastYIQ(settings.accentColor);
 
   return (
     <html lang="es">
@@ -33,6 +35,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           __html: `
             :root {
               --primary: ${settings.accentColor};
+              --primary-foreground: ${primaryForeground};
               --background: ${settings.backgroundColor};
             }
           `

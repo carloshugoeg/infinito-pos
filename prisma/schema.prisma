@@ -18,9 +18,8 @@ enum CashSessionStatus {
 }
 
 enum OrderStatus {
-  PAID
+  PENDING
   PREPARING
-  READY
   DELIVERED
   CANCELLED
 }
@@ -225,7 +224,7 @@ model Order {
   customerNit     String              @default("CF")
   customerName    String              @default("Consumidor Final")
   customerPhone   String?
-  status          OrderStatus         @default(PAID)
+  status          OrderStatus         @default(PENDING)
   subtotal        Decimal             @db.Decimal(12, 2)
   discountTotal   Decimal             @default(0) @db.Decimal(12, 2)
   taxTotal        Decimal             @default(0) @db.Decimal(12, 2)
