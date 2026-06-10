@@ -10,7 +10,16 @@ export type SessionPayload = {
 };
 
 function getSecret() {
-  return process.env.SESSION_SECRET || "dev-only-koi-pos-secret";
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    throw new Error(
+      "SESSION_SECRET is required (>=32 random chars). Set it in the environment before running the app."
+    );
+  }
+  if (process.env.NODE_ENV === "production" && secret.length < 32) {
+    throw new Error("SESSION_SECRET must be at least 32 characters in production.");
+  }
+  return secret;
 }
 
 function sign(value: string) {
