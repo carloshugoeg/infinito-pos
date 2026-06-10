@@ -1,6 +1,8 @@
 /**
  * Auditoría E2E completa — cubre módulos admin no testeados en specs existentes.
- * Usa prefijo E2E_ para datos creados; no modifica seed demo crítico.
+ * Las ventas usan el catálogo real (producto "Crema", Q35). Los datos creados
+ * llevan sufijo de timestamp; no modifican el catálogo sembrado.
+ * Prerequisito de datos: `npm run db:seed && npm run db:seed:infinito`.
  */
 import { test, expect, type Page } from "@playwright/test";
 
@@ -184,11 +186,10 @@ test.describe("Auditoría — Reportes", () => {
 
   test("venta genera datos en reportes y CSV descargable", async ({ page }) => {
     await page.goto("/kiosk");
-    await page.getByRole("button", { name: "Vaso" }).first().click();
-    await page.getByRole("button", { name: "Solo Fresa" }).click();
+    await page.getByRole("button", { name: "Crema" }).first().click();
     await page.getByRole("button", { name: "Agregar" }).click();
     const cash = page.locator('input[name="cashAmount"]');
-    await cash.fill("25");
+    await cash.fill("35");
     await cash.blur();
     await page.getByRole("button", { name: "COBRAR" }).click();
     await expect(page.getByText("El carrito esta vacio.")).toBeVisible({ timeout: 10_000 });
@@ -262,9 +263,9 @@ test.describe("Auditoría — Ajustes", () => {
     await page.getByRole("button", { name: "Guardar Ajustes" }).click();
     await ensureCashOpen(page);
     await page.goto("/kiosk");
-    await page.getByRole("button", { name: "Vaso" }).first().click();
+    await page.getByRole("button", { name: "Crema" }).first().click();
     // Grid mode uses larger layout classes — page should not error
-    await expect(page.getByRole("button", { name: "Solo Fresa" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Tapadera" })).toBeVisible();
   });
 });
 
@@ -278,11 +279,10 @@ test.describe("Auditoría — Ciclo de preparación (estados actuales)", () => {
   });
 
   test("Pendiente → Preparar → Preparando → Entregar → desaparece", async ({ page }) => {
-    await page.getByRole("button", { name: "Vaso" }).first().click();
-    await page.getByRole("button", { name: "Solo Fresa" }).click();
+    await page.getByRole("button", { name: "Crema" }).first().click();
     await page.getByRole("button", { name: "Agregar" }).click();
     const cash = page.locator('input[name="cashAmount"]');
-    await cash.fill("25");
+    await cash.fill("35");
     await cash.blur();
     await page.getByRole("button", { name: "COBRAR" }).click();
     await expect(page.getByText("El carrito esta vacio.")).toBeVisible({ timeout: 10_000 });
@@ -306,16 +306,15 @@ test.describe("Auditoría — Caja con ventas", () => {
     const before = await readCashSold(page);
 
     await page.goto("/kiosk");
-    await page.getByRole("button", { name: "Vaso" }).first().click();
-    await page.getByRole("button", { name: "Solo Fresa" }).click();
+    await page.getByRole("button", { name: "Crema" }).first().click();
     await page.getByRole("button", { name: "Agregar" }).click();
     const cash = page.locator('input[name="cashAmount"]');
-    await cash.fill("25");
+    await cash.fill("35");
     await cash.blur();
     await page.getByRole("button", { name: "COBRAR" }).click();
     await expect(page.getByText("El carrito esta vacio.")).toBeVisible({ timeout: 10_000 });
 
     const after = await readCashSold(page);
-    expect(after - before).toBeCloseTo(25, 2);
+    expect(after - before).toBeCloseTo(35, 2);
   });
 });

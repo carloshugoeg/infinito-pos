@@ -1,5 +1,15 @@
 import { test, expect, type Page } from "@playwright/test";
 
+/**
+ * Suite del kiosco contra el catálogo REAL de Infinito (9 productos de precio fijo).
+ * Prerequisito de datos: `npm run db:seed && npm run db:seed:infinito`
+ *   - db:seed crea el admin (admin@koi.local) y la sucursal CENTRO.
+ *   - db:seed:infinito carga los 9 productos reales + add-ons "Para llevar" y
+ *     desactiva el catálogo demo, así que el kiosco solo muestra el menú real.
+ * Los productos fijos no tienen modificadores requeridos; "Para llevar"
+ * (tapadera / porta vasos / souffle en chocolate) es opcional y gratis (+Q0).
+ */
+
 // ─── Shared helpers ────────────────────────────────────────────────────────────
 
 /** Match formatted GTQ currency (non-breaking space between Q and amount) */
@@ -32,16 +42,10 @@ async function pay(page: Page, method: "cashAmount" | "cardAmount" | "transferAm
   await input.blur();
 }
 
-/** Select Vaso + Solo Fresa (required modifier). Total: Q25. */
-async function selectVasoSoloFresa(page: Page) {
-  await page.getByRole("button", { name: "Vaso" }).first().click();
-  await page.getByRole("button", { name: "Solo Fresa" }).click();
-}
-
-/** Select Vaso pequeno + Blanco (required modifier). Total: Q25. */
-async function selectVasoPequenoBlanco(page: Page) {
-  await page.getByRole("button", { name: "Vaso pequeno" }).click();
-  await page.getByRole("button", { name: "Blanco" }).click();
+/** Select a fixed-price Infinito product. No required modifiers → "Agregar" queda habilitado. */
+async function selectProduct(page: Page, name: string) {
+  await page.getByRole("button", { name }).first().click();
+  await expect(page.getByRole("button", { name: "Agregar" })).toBeEnabled();
 }
 
 async function addToCart(page: Page) {
@@ -66,134 +70,145 @@ test.describe("Kiosk — Flujos de Compra", () => {
   // ── Compras simples ────────────────────────────────────────────────────────
 
   test("compra simple con pago exacto en efectivo → orden aparece como Pendiente", async ({ page }) => {
-    await selectVasoSoloFresa(page);
+    await selectProduct(page, "Crema"); // Q35
     await addToCart(page);
     await expect(page.getByText("1 items")).toBeVisible();
-    // Cart total (unique at Q25 when only 1 item)
-    await expect(page.getByTestId("cart-total")).toContainText("25.00");
+    await expect(page.getByTestId("cart-total")).toContainText("35.00");
 
-    await pay(page, "cashAmount", "25");
+    await pay(page, "cashAmount", "35");
     await cobrar(page);
 
     await expect(page.getByText("Pendiente")).toBeVisible();
   });
 
-  test("compra con topping opcional: Vaso pequeno Blanco + Oreo = Q30", async ({ page }) => {
-    await selectVasoPequenoBlanco(page);
-    await page.getByRole("button", { name: "Oreo" }).first().click();
+  test("add-ons 'Para llevar' son gratis: no cambian el precio", async ({ page }) => {
+    await selectProduct(page, "Chocolate con leche"); // Q38
+    await page.getByRole("button", { name: "Tapadera" }).click();
+    await page.getByRole("button", { name: "Porta vasos" }).click();
     await addToCart(page);
-    await expect(page.getByTestId("cart-total")).toContainText("30.00");
+    // Los add-ons son priceDelta 0 → el total sigue siendo Q38.
+    await expect(page.getByTestId("cart-total")).toContainText("38.00");
 
-    await pay(page, "cashAmount", "30");
+    await pay(page, "cashAmount", "38");
     await cobrar(page);
     await expect(page.getByText("Pendiente")).toBeVisible();
+  });
+
+  test("souffle de chocolate solo aparece en productos con chocolate", async ({ page }) => {
+    await selectProduct(page, "Chocolate con leche");
+    await expect(page.getByRole("button", { name: "Souffle de chocolate" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Tapadera" })).toBeVisible();
+
+    // Yogurt no es de chocolate → sin souffle, pero sí con tapadera/porta vasos.
+    await selectProduct(page, "Yogurt");
+    await expect(page.getByRole("button", { name: "Souffle de chocolate" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Tapadera" })).toBeVisible();
   });
 
   test("pago con solo tarjeta", async ({ page }) => {
-    await selectVasoSoloFresa(page);
+    await selectProduct(page, "Crema");
     await addToCart(page);
-    await pay(page, "cardAmount", "25");
+    await pay(page, "cardAmount", "35");
     await cobrar(page);
   });
 
   test("pago con solo transferencia", async ({ page }) => {
-    await selectVasoSoloFresa(page);
+    await selectProduct(page, "Crema");
     await addToCart(page);
-    await pay(page, "transferAmount", "25");
+    await pay(page, "transferAmount", "35");
     await cobrar(page);
   });
 
   test("pago mixto tarjeta + efectivo sin cambio", async ({ page }) => {
-    await selectVasoSoloFresa(page);
+    await selectProduct(page, "Crema"); // Q35
     await addToCart(page);
-    await pay(page, "cardAmount", "15");
-    await pay(page, "cashAmount", "10");
+    await pay(page, "cardAmount", "20");
+    await pay(page, "cashAmount", "15");
     await cobrar(page);
   });
 
-  test("efectivo con vuelto: pagar Q30 por Q25 → muestra cambio Q5", async ({ page }) => {
-    await selectVasoSoloFresa(page);
+  test("efectivo con vuelto: pagar Q40 por Q35 → muestra cambio Q5", async ({ page }) => {
+    await selectProduct(page, "Crema"); // Q35
     await addToCart(page);
-    await pay(page, "cashAmount", "30");
+    await pay(page, "cashAmount", "40");
 
     // Change display — the only Q5 element in the payment section
     await expect(page.getByText(Q("5.00")).first()).toBeVisible();
   });
 
   test("dos productos distintos → 2 items y total sumado", async ({ page }) => {
-    await selectVasoSoloFresa(page);
+    await selectProduct(page, "Crema"); // Q35
     await addToCart(page);
-    await selectVasoPequenoBlanco(page);
+    await selectProduct(page, "Lotus"); // Q50
     await addToCart(page);
 
     await expect(page.getByText("2 items")).toBeVisible();
-    // Q50 only appears as cart total (each line is Q25)
-    await expect(page.getByTestId("cart-total")).toContainText("50.00");
+    await expect(page.getByTestId("cart-total")).toContainText("85.00");
 
-    await pay(page, "cashAmount", "50");
+    await pay(page, "cashAmount", "85");
     await cobrar(page);
   });
 
   test("cantidad × 2 con botón + → total se duplica", async ({ page }) => {
-    await selectVasoPequenoBlanco(page);
+    await selectProduct(page, "Crema"); // Q35
     await page.getByTestId("qty-plus").click();
     await expect(page.locator("strong.w-10")).toHaveText("2");
     await addToCart(page);
 
-    await expect(page.getByTestId("cart-total")).toContainText("50.00");
-    await pay(page, "cashAmount", "50");
+    await expect(page.getByTestId("cart-total")).toContainText("70.00");
+    await pay(page, "cashAmount", "70");
     await cobrar(page);
   });
 
   test("notas especiales aparecen en la orden activa", async ({ page }) => {
-    await selectVasoSoloFresa(page);
+    await selectProduct(page, "Crema");
     await page.getByPlaceholder("Ej. sin azucar, extra hielo...").fill("sin azucar");
     await addToCart(page);
-    await pay(page, "cashAmount", "25");
+    await pay(page, "cashAmount", "35");
     await cobrar(page);
 
     await expect(page.getByText("sin azucar")).toBeVisible();
   });
 
   test("datos de cliente — NIT y nombre se envían en el pedido", async ({ page }) => {
-    await selectVasoSoloFresa(page);
+    await selectProduct(page, "Crema");
     await addToCart(page);
 
     await page.locator('input[name="customerNit"]').fill("12345678901");
     await page.locator('input[name="customerName"]').fill("Juan Pérez");
     await page.locator('input[name="customerPhone"]').fill("55551234");
 
-    await pay(page, "cashAmount", "25");
+    await pay(page, "cashAmount", "35");
     await cobrar(page);
   });
 
   // ── Carrito ────────────────────────────────────────────────────────────────
 
   test("editar item del carrito con lápiz → total actualizado al guardar", async ({ page }) => {
-    await selectVasoPequenoBlanco(page);
+    await selectProduct(page, "Crema"); // Q35
     await addToCart(page);
-    await expect(page.getByTestId("cart-total")).toContainText("25.00");
+    await expect(page.getByTestId("cart-total")).toContainText("35.00");
 
     await page.getByTestId("cart-edit").first().click();
     await expect(page.getByRole("button", { name: "Guardar" })).toBeVisible();
 
-    // Add Oreo (+Q5)
-    await page.getByRole("button", { name: "Oreo" }).first().click();
+    // Subir cantidad a 2 dentro del editor → Q70.
+    await page.getByTestId("qty-plus").click();
     await page.getByRole("button", { name: "Guardar" }).click();
 
-    await expect(page.getByTestId("cart-total")).toContainText("30.00");
+    await expect(page.getByTestId("cart-total")).toContainText("70.00");
   });
 
   test("cancelar edición no modifica el total", async ({ page }) => {
-    await selectVasoPequenoBlanco(page);
+    await selectProduct(page, "Crema");
     await addToCart(page);
     const originalTotal = await page.getByTestId("cart-total").textContent();
 
     await page.getByTestId("cart-edit").first().click();
     await expect(page.getByRole("button", { name: "Guardar" })).toBeVisible();
 
-    // Add Oreo but then cancel
-    await page.getByRole("button", { name: "Oreo" }).first().click();
+    // Cambiar cantidad pero cancelar.
+    await page.getByTestId("qty-plus").click();
     await page.getByTestId("edit-cancel").click();
 
     const newTotal = await page.getByTestId("cart-total").textContent();
@@ -201,7 +216,7 @@ test.describe("Kiosk — Flujos de Compra", () => {
   });
 
   test("eliminar item del carrito → carrito vacío", async ({ page }) => {
-    await selectVasoSoloFresa(page);
+    await selectProduct(page, "Crema");
     await addToCart(page);
     await expect(page.getByText("1 items")).toBeVisible();
 
@@ -214,9 +229,9 @@ test.describe("Kiosk — Flujos de Compra", () => {
   // ── Ciclo de estados ───────────────────────────────────────────────────────
 
   test("ciclo completo: PENDING → PREPARING → DELIVERED", async ({ page }) => {
-    await selectVasoSoloFresa(page);
+    await selectProduct(page, "Crema");
     await addToCart(page);
-    await pay(page, "cashAmount", "25");
+    await pay(page, "cashAmount", "35");
     await page.getByRole("button", { name: "COBRAR" }).click();
     await expect(page.getByText("El carrito esta vacio.")).toBeVisible({ timeout: 10_000 });
 
@@ -236,50 +251,14 @@ test.describe("Kiosk — Flujos de Compra", () => {
   });
 
   test("cancelar orden activa — desaparece de Pedidos activos", async ({ page }) => {
-    await selectVasoSoloFresa(page);
+    await selectProduct(page, "Crema");
     await addToCart(page);
-    await pay(page, "cashAmount", "25");
+    await pay(page, "cashAmount", "35");
     await page.getByRole("button", { name: "COBRAR" }).click();
     await expect(page.getByText("El carrito esta vacio.")).toBeVisible({ timeout: 10_000 });
 
     await expect(page.getByText("Pendiente")).toBeVisible();
     await page.getByRole("button", { name: "Cancelar" }).first().click();
     await expect(page.getByText("No hay pedidos pendientes.")).toBeVisible({ timeout: 5_000 });
-  });
-
-  // ── Validación de modificadores ────────────────────────────────────────────
-
-  test("Agregar deshabilitado hasta seleccionar modificador requerido", async ({ page }) => {
-    await page.getByRole("button", { name: "Vaso" }).first().click();
-
-    await expect(page.getByRole("button", { name: "Agregar" })).toBeDisabled();
-    await expect(page.locator(".bg-red-50")).toBeVisible();
-
-    await page.getByRole("button", { name: "Solo Fresa" }).click();
-    await expect(page.getByRole("button", { name: "Agregar" })).toBeEnabled();
-    await expect(page.locator(".bg-red-50")).not.toBeVisible();
-  });
-
-  test("modificador exclusivo (max=1) — seleccionar otro deselecciona el anterior", async ({ page }) => {
-    await page.getByRole("button", { name: "Vaso" }).first().click();
-
-    await page.getByRole("button", { name: "Solo Fresa" }).click();
-    // Switch to Crema (base modifier) — Base has maxSelections=1, Solo Fresa deselected
-    await page.getByRole("button", { name: /^Crema/ }).click();
-
-    // Agregar still enabled (one modifier selected)
-    await expect(page.getByRole("button", { name: "Agregar" })).toBeEnabled();
-
-    // Add to cart — Crema selected → total = Q35
-    await addToCart(page);
-    await expect(page.getByTestId("cart-total")).toContainText("35.00");
-  });
-
-  test("múltiples toppings opcionales se acumulan en precio", async ({ page }) => {
-    await selectVasoPequenoBlanco(page); // Q25
-    await page.getByRole("button", { name: "Oreo" }).first().click();  // +Q5
-    await page.getByRole("button", { name: "Mania" }).first().click(); // +Q3
-    await addToCart(page);
-    await expect(page.getByTestId("cart-total")).toContainText("33.00");
   });
 });

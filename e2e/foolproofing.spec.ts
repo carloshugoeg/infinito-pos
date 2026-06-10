@@ -44,15 +44,8 @@ test.describe("Fool-Proofing y Edge Cases", () => {
     await expect(page.getByRole("button", { name: "COBRAR" })).toBeDisabled();
   });
 
-  test("Agregar deshabilitado cuando no hay modifier requerido seleccionado", async ({ page }) => {
-    await page.getByRole("button", { name: "Vaso" }).first().click();
-    await expect(page.getByRole("button", { name: "Agregar" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "COBRAR" })).toBeDisabled();
-  });
-
   test("COBRAR con pago insuficiente muestra alerta de validación sin enviar pedido", async ({ page }) => {
-    await page.getByRole("button", { name: "Vaso" }).first().click();
-    await page.getByRole("button", { name: "Solo Fresa" }).click();
+    await page.getByRole("button", { name: "Crema" }).first().click();
     await page.getByRole("button", { name: "Agregar" }).click();
 
     // Pay only Q10 for a Q25 item
@@ -75,8 +68,7 @@ test.describe("Fool-Proofing y Edge Cases", () => {
   });
 
   test("COBRAR sin ningún pago muestra alerta de validación", async ({ page }) => {
-    await page.getByRole("button", { name: "Vaso" }).first().click();
-    await page.getByRole("button", { name: "Solo Fresa" }).click();
+    await page.getByRole("button", { name: "Crema" }).first().click();
     await page.getByRole("button", { name: "Agregar" }).click();
 
     // All payment inputs at 0 — nothing entered
@@ -93,12 +85,11 @@ test.describe("Fool-Proofing y Edge Cases", () => {
   });
 
   test("COBRAR no hace doble submit — carrito limpio sin pedidos duplicados", async ({ page }) => {
-    await page.getByRole("button", { name: "Vaso" }).first().click();
-    await page.getByRole("button", { name: "Solo Fresa" }).click();
+    await page.getByRole("button", { name: "Crema" }).first().click();
     await page.getByRole("button", { name: "Agregar" }).click();
 
     const input = page.locator('input[name="cashAmount"]');
-    await input.fill("25");
+    await input.fill("35");
     await input.blur();
 
     const cobrarBtn = page.getByRole("button", { name: "COBRAR" });
@@ -114,7 +105,7 @@ test.describe("Fool-Proofing y Edge Cases", () => {
   // ── Cantidad ──────────────────────────────────────────────────────────────
 
   test("botón Menos no baja la cantidad por debajo de 1", async ({ page }) => {
-    await page.getByRole("button", { name: "Vaso" }).first().click();
+    await page.getByRole("button", { name: "Crema" }).first().click();
 
     const qty = page.locator("strong.w-10");
     await expect(qty).toHaveText("1");
@@ -126,7 +117,7 @@ test.describe("Fool-Proofing y Edge Cases", () => {
   });
 
   test("botón Más incrementa la cantidad de 1 a 3", async ({ page }) => {
-    await page.getByRole("button", { name: "Vaso pequeno" }).click();
+    await page.getByRole("button", { name: "Crema" }).first().click();
 
     const qty = page.locator("strong.w-10");
     await expect(qty).toHaveText("1");
@@ -139,7 +130,7 @@ test.describe("Fool-Proofing y Edge Cases", () => {
   });
 
   test("botón Más respeta el límite máximo de cantidad (99)", async ({ page }) => {
-    await page.getByRole("button", { name: "Vaso pequeno" }).click();
+    await page.getByRole("button", { name: "Crema" }).first().click();
 
     const qty = page.locator("strong.w-10");
     // Click + many times quickly
@@ -208,8 +199,7 @@ test.describe("Fool-Proofing y Edge Cases", () => {
   // ── Cancelar edición ─────────────────────────────────────────────────────
 
   test("cancelar edición no modifica el carrito ni el total", async ({ page }) => {
-    await page.getByRole("button", { name: "Vaso pequeno" }).click();
-    await page.getByRole("button", { name: "Blanco" }).click();
+    await page.getByRole("button", { name: "Crema" }).first().click();
     await page.getByRole("button", { name: "Agregar" }).click();
 
     const originalTotal = await page.getByTestId("cart-total").textContent();
@@ -217,8 +207,8 @@ test.describe("Fool-Proofing y Edge Cases", () => {
     await page.getByTestId("cart-edit").first().click();
     await expect(page.getByRole("button", { name: "Guardar" })).toBeVisible();
 
-    // Modify but cancel
-    await page.getByRole("button", { name: "Oreo" }).first().click();
+    // Modificar (cantidad) pero cancelar
+    await page.getByTestId("qty-plus").click();
     await page.getByTestId("edit-cancel").click();
 
     const newTotal = await page.getByTestId("cart-total").textContent();
