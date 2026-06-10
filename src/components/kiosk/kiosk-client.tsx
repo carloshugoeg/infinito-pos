@@ -257,6 +257,7 @@ export function KioskClient({
                           <button
                             type="button"
                             key={modifier.id}
+                            aria-label={modifier.name}
                             onClick={() => toggleModifier(selectedProduct, modifier.id)}
                             className={
                               modifierGridEnabled

@@ -9,3 +9,4 @@ prisma/dev.db
 playwright-report/
 test-results/
 e2e/.auth/
+.vercel

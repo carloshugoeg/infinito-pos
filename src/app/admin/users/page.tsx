@@ -24,7 +24,7 @@ export default async function UsersPage() {
             <form action={createUserAction} className="space-y-3">
               <div><Label>Nombre</Label><Input name="name" required /></div>
               <div><Label>Correo</Label><Input name="email" type="email" required /></div>
-              <div><Label>Contrasena</Label><Input name="password" type="password" defaultValue="operator12345" required /></div>
+              <div><Label>Contrasena</Label><Input name="password" type="password" autoComplete="new-password" required /></div>
               <div>
                 <Label>Rol</Label>
                 <select name="role" className="touch-target w-full rounded-md border border-[var(--border)] bg-white px-3">

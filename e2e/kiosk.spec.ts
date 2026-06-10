@@ -65,7 +65,7 @@ test.describe("Kiosk — Flujos de Compra", () => {
 
   // ── Compras simples ────────────────────────────────────────────────────────
 
-  test("compra simple con pago exacto en efectivo → orden aparece como Pagado", async ({ page }) => {
+  test("compra simple con pago exacto en efectivo → orden aparece como Pendiente", async ({ page }) => {
     await selectVasoSoloFresa(page);
     await addToCart(page);
     await expect(page.getByText("1 items")).toBeVisible();
@@ -75,7 +75,7 @@ test.describe("Kiosk — Flujos de Compra", () => {
     await pay(page, "cashAmount", "25");
     await cobrar(page);
 
-    await expect(page.getByText("Pagado")).toBeVisible();
+    await expect(page.getByText("Pendiente")).toBeVisible();
   });
 
   test("compra con topping opcional: Vaso pequeno Blanco + Oreo = Q30", async ({ page }) => {
@@ -86,7 +86,7 @@ test.describe("Kiosk — Flujos de Compra", () => {
 
     await pay(page, "cashAmount", "30");
     await cobrar(page);
-    await expect(page.getByText("Pagado")).toBeVisible();
+    await expect(page.getByText("Pendiente")).toBeVisible();
   });
 
   test("pago con solo tarjeta", async ({ page }) => {
@@ -213,7 +213,7 @@ test.describe("Kiosk — Flujos de Compra", () => {
 
   // ── Ciclo de estados ───────────────────────────────────────────────────────
 
-  test("ciclo completo: PAID → PREPARING → READY → DELIVERED", async ({ page }) => {
+  test("ciclo completo: PENDING → PREPARING → DELIVERED", async ({ page }) => {
     await selectVasoSoloFresa(page);
     await addToCart(page);
     await pay(page, "cashAmount", "25");
@@ -226,13 +226,10 @@ test.describe("Kiosk — Flujos de Compra", () => {
       ? page.locator(".rounded-3xl.border").filter({ hasText: `#${orderId}` })
       : page.locator(".rounded-3xl.border").first();
 
-    await expect(card.getByText("Pagado")).toBeVisible();
+    await expect(card.getByText("Pendiente")).toBeVisible();
 
     await card.getByRole("button", { name: "Preparar" }).click();
     await expect(card.getByText("Preparando")).toBeVisible({ timeout: 5_000 });
-
-    await card.getByRole("button", { name: "Listo" }).click();
-    await expect(card.getByText("Listo")).toBeVisible({ timeout: 5_000 });
 
     await card.getByRole("button", { name: "Entregar" }).click();
     await expect(page.getByText("No hay pedidos pendientes.")).toBeVisible({ timeout: 5_000 });
@@ -245,7 +242,7 @@ test.describe("Kiosk — Flujos de Compra", () => {
     await page.getByRole("button", { name: "COBRAR" }).click();
     await expect(page.getByText("El carrito esta vacio.")).toBeVisible({ timeout: 10_000 });
 
-    await expect(page.getByText("Pagado")).toBeVisible();
+    await expect(page.getByText("Pendiente")).toBeVisible();
     await page.getByRole("button", { name: "Cancelar" }).first().click();
     await expect(page.getByText("No hay pedidos pendientes.")).toBeVisible({ timeout: 5_000 });
   });

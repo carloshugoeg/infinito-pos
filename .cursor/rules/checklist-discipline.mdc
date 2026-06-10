@@ -1,0 +1,40 @@
+---
+description: Consult and update project checklists when the task touches them
+alwaysApply: true
+---
+
+# Checklist discipline
+
+Before writing code, **identify which checklists apply** and read the relevant sections. After coded changes, **update checklist state** when you close or advance an item.
+
+Index: `docs/README.md`.
+
+## When to read which checklist
+
+| If the task touches… | Read first |
+| --- | --- |
+| Any feature, bugfix, or refactor | `docs/IMPLEMENTATION_PLAN.md` — find the task/subtask; do not duplicate work |
+| Deploy, env vars, migrations, prod DB, HTTPS, backups | `docs/GO_LIVE_CHECKLIST.md` (P0-INF) + `docs/DEPLOY.md` |
+| Auth, sessions, cookies, seed, login, roles | `docs/GO_LIVE_CHECKLIST.md` (P0-SEC) + `docs/qa/security.md` |
+| E2E, Playwright, QA gaps, regressions | `docs/qa/open-issues.md` + `docs/qa/e2e-audit-2026-06-09.md` |
+| Security hardening, CSV export, audit log | `docs/qa/security.md` + matching P1/P2 in go-live checklist |
+| V1 scope / “should we build this?” | `docs/requirements.md` (vision) + `docs/APP_CONTEXT.md` (as-built) + V1 boundaries in `AGENTS.md` |
+
+## Required workflow
+
+1. **Start** — State which checklist(s) you checked and which item IDs (e.g. P0-SEC-02, T14, E-004) are relevant.
+2. **During** — Respect open P0 items; do not introduce patterns that contradict pending go-live gates.
+3. **Finish** — If you coded, reviewed, and tested something tracked in a checklist:
+   - Update `docs/IMPLEMENTATION_PLAN.md` (always).
+   - Update `docs/GO_LIVE_CHECKLIST.md` only when your change **directly closes** an item you verified — set `[x]` or `[~]` with a short note; do not edit unrelated rows.
+   - Update `docs/qa/open-issues.md` if you closed a documented gap.
+
+## Do not skip
+
+- Starting implementation without checking `IMPLEMENTATION_PLAN.md` for an existing task.
+- Deploy or security work without scanning `GO_LIVE_CHECKLIST.md` for matching P0/P1 IDs.
+- Marking work complete in chat without updating the checklist that tracks it.
+
+## Token preservation
+
+Read **specific sections** (grep by ID or heading), not entire checklists. Summarize findings in 1–3 bullets before coding.

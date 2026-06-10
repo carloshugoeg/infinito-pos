@@ -63,7 +63,7 @@ Formato obligatorio por task/subtask: `Estado | Task | Codificado | Revisado | T
 | [x] | T6 - Ordenes y preparacion | Si | Si | Si | Flujo integrado en `/kiosk`. |
 | [x] | T6.1 Crear orden pagada | Si | Si | Si | Con transaccion, inventario y redirect unico por orden. |
 | [x] | T6.2 Mostrar pedidos activos en `/kiosk` | Si | Si | Si | Estados activos. |
-| [x] | T6.3 Cambiar estados paid -> preparing -> ready -> delivered | Si | Si | Si | Server action. |
+| [x] | T6.3 Cambiar estados pending -> preparing -> delivered | Si | Si | Si | Server action; migracion `20260609120000_update_order_status_enum` alinea enum DB (`PAID`/`READY` -> `PENDING`/`PREPARING`). |
 | [x] | T6.4 Cancelar orden con razon y permisos | Si | Si | Si | Cancelacion limitada a sucursal activa; bloquea ordenes cerradas. |
 | [x] | T7 - Inventario | Si | Si | Si | Descuento y movimientos. |
 | [x] | T7.1 Descontar receta al pagar | Si | Si | Si | Unit-tested resolucion de uso. |
@@ -111,6 +111,10 @@ Formato obligatorio por task/subtask: `Estado | Task | Codificado | Revisado | T
 | [x] | T13.2 Modulo de gastos (OPEX) | Si | Si | Si | `Expense`/`RecurringExpense`; `domain/expenses.ts` (validacion, expansion recurrente al vuelo, suma por categoria); `/admin/expenses`. |
 | [x] | T13.3 Modulo financiero | Si | Si | Si | `domain/finance.ts` (P&L puro) + `server/reports/finance.ts`; `/admin/finance` con UB/UN, margenes y rentabilidad por producto. |
 | [~] | T13.4 Correo diario al cerrar caja | Si | Si | Parcial | `services/notifications.ts` build/render unit-tested + `EmailLog` idempotente; enganchado en cierre de caja. Envio es stub (console.log); falta integrar proveedor (Resend/SMTP). |
+| [~] | T14 - Go-live piloto → prod | Parcial | Si | Parcial | `docs/GO_LIVE_CHECKLIST.md` (P0/P1/P2/P3); QA en `docs/qa/`; E2E 58/70. Gate A/B/C pendientes de ejecucion. |
+| [x] | T14 - Remediacion auditoria E2E (E-001..E-012) | Si | Si | Si | Ver `docs/qa/e2e-audit-2026-06-09.md`. A11y: `aria-label` empresa en sidebar colapsado y `aria-label` en botones de modificador. Tests: labels `Pendiente`, ciclo `PENDING->PREPARING->DELIVERED`, asserts por `input[value]`/`toHaveValue`, scope a `main`, delta de caja. Docs `APP_CONTEXT.md` sincronizados. Migracion `OrderStatus` aplicada (`migrate status` OK). |
+| [x] | T14.1 Limpieza y consolidacion de docs | Si | Si | No | `docs/README.md` indice; `docs/qa/` (E2E snapshot, open-issues, security); redirects legacy; matriz caos en APP_CONTEXT §14; `.docx` ventas fuera de git; `QA_CHAOS_TESTS.md` eliminado. `GO_LIVE_CHECKLIST.md` no tocado (agentes activos). |
+| [x] | T14.2 Regla agentes — checklist discipline | Si | Si | No | `AGENTS.md` + `.cursor/rules/checklist-discipline.mdc` (alwaysApply): consultar checklists relevantes al inicio; actualizar al cerrar items. |
 
 ## Hallazgos Del Excel Operativo
 
@@ -125,3 +129,16 @@ Brechas detectadas contra el POS antes de T10:
 - Faltaba catalogo exacto del kiosco actual: `Vaso`, bases `Con leche`, `Blanco`, `Solo Fresa`, `Solo Mango`, `Crema`, toppings/extra toppings, extra bases, tapadera y tenedor.
 - El reporte generico no replicaba la lectura mental de `Diario ventas`.
 - El POS soporta transferencia adicional; el Excel solo separa efectivo y tarjeta. El reporte nuevo agrega columna transferencia.
+
+## V2 backlog (post Gate C)
+
+Pendiente hasta cerrar go-live y estabilizar `GO_LIVE_CHECKLIST.md`:
+
+| ID | Item | Ref |
+| --- | --- | --- |
+| V2-DOC-01 | Archivar `GO_LIVE_CHECKLIST.md` → `docs/qa/go-live-checklist-2026.md` | Gate C + checklist estable |
+| V2-DOC-02 | Recortar log T0–T14 a resumen + backlog | Tras V2-DOC-01 |
+| V2-FEAT-01 | Import/export Excel historico (T10.5) | Post-launch opcional |
+| V2-FEAT-02 | Correo diario con proveedor real (T13.4) | Resend/SMTP |
+| V2-SEC-01 | AuditLog, rate limit CSV, sesion 4–8 h | `docs/qa/security.md` A1–A3 |
+| V2-QA-01 | Ampliar E2E: CRUD admin, viewport tablet | `docs/qa/open-issues.md` |
