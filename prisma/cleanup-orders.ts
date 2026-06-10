@@ -5,16 +5,9 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Cleaning up active orders...");
 
-  // Update all READY to DELIVERED
-  await prisma.order.updateMany({
-    where: { status: "READY" },
-    data: { status: "DELIVERED", deliveredAt: new Date() }
-  });
-  console.log("Moved READY orders to DELIVERED.");
-
-  // Find all active (PAID, PREPARING)
+  // Find all active (PENDING, PREPARING)
   const activeOrders = await prisma.order.findMany({
-    where: { status: { in: ["PAID", "PREPARING"] } },
+    where: { status: { in: ["PENDING", "PREPARING"] } },
     orderBy: { createdAt: "desc" },
     select: { id: true }
   });

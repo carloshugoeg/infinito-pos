@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { toNumber } from "@/lib/utils";
 import { getActiveBranch, requireUser } from "@/server/auth";
 import { prepareCashSessionClose } from "@/server/services/cash";
+import { sendDailySummary } from "@/server/services/notifications";
 import { validateCashSessionAmounts } from "@/domain/cash";
 import { sanitizeOrderNote } from "@/domain/cart";
 
@@ -77,6 +78,13 @@ export async function closeCashSessionAction(formData: FormData) {
       notes: close.notes
     }
   });
+
+  // Resumen diario al cerrar caja (envio diferido). No debe bloquear el cierre.
+  try {
+    await sendDailySummary({ branchId: branch.id });
+  } catch (error) {
+    console.error("No se pudo generar el resumen diario:", error);
+  }
 
   revalidatePath("/kiosk");
   redirect("/cash/open");

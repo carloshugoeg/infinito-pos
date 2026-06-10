@@ -10,7 +10,9 @@ const items = [
   ["Catalogo", "/admin/catalog", "Productos, modificadores y recetas."],
   ["Ingredientes", "/admin/ingredients", "Insumos y unidades."],
   ["Inventario", "/admin/inventory", "Stock por sucursal y movimientos."],
-  ["Reportes", "/admin/reports", "Ventas, pagos y popularidad."]
+  ["Reportes", "/admin/reports", "Ventas, pagos y popularidad."],
+  ["Gastos", "/admin/expenses", "Gastos operativos y recurrentes."],
+  ["Finanzas", "/admin/finance", "Ingresos, costos y utilidad neta."]
 ] as const;
 
 export default async function AdminPage() {

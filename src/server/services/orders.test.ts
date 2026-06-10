@@ -30,7 +30,8 @@ describe("paid order service", () => {
       recipeItems: [
         { productId: "product-vaso", ingredientId: "ingredient-vaso", quantity: 1 },
         { modifierId: "modifier-chocolate", ingredientId: "ingredient-chocolate", quantity: 40 }
-      ]
+      ],
+      ingredientCosts: { "ingredient-vaso": 2, "ingredient-chocolate": 0.5 }
     });
     const writes: Array<{ model: string; input: unknown }> = [];
     const tx = {
@@ -65,6 +66,9 @@ describe("paid order service", () => {
 
     expect(orderId).toBe("order-1");
     expect(prepared.totals.total).toBe(70);
+    // COGS: vaso 1*2 + chocolate 40*0.5 = 22 por unidad, *2 = 44 por linea
+    expect(prepared.totals.costOfGoodsTotal).toBe(44);
+    expect(prepared.totals.grossProfit).toBe(26);
     expect(prepared.usage).toEqual([
       { ingredientId: "ingredient-vaso", quantity: 2 },
       { ingredientId: "ingredient-chocolate", quantity: 80 }
@@ -73,11 +77,15 @@ describe("paid order service", () => {
     expect(writes[0].input).toMatchObject({
       data: {
         total: 70,
+        costOfGoodsTotal: 44,
+        grossProfit: 26,
         items: {
           create: [
             {
               productNameSnapshot: "Vaso",
               lineTotal: 70,
+              unitCostSnapshot: 22,
+              lineCostSnapshot: 44,
               notes: "sin bolsa"
             }
           ]
