@@ -105,9 +105,9 @@ Ejecutar **una vez en el dispositivo real** (768×1024 o el tablet del piloto):
 
 | Estado | ID | Tarea | Ref | Verificación |
 | --- | --- | --- | --- | --- |
-| `[ ]` | P1-QA-01 | Actualizar `e2e/kiosk.spec.ts`: "Pagado" → "Pendiente" | E-004 | Tests 68, 81, 241 pasan |
-| `[ ]` | P1-QA-02 | Actualizar ciclo de estados: quitar READY/"Listo"; usar Preparar→Entregar | E-005 | Test línea 216 pasa |
-| `[ ]` | P1-QA-03 | Corregir aserciones admin en `full-audit.spec.ts` (`toHaveValue` en inputs) | E-002, E-006, E-007 | Spec auditoría verde |
+| `[x]` | P1-QA-01 | Actualizar `e2e/kiosk.spec.ts`: "Pagado" → "Pendiente" | E-004 | Verificado 2026-06-10: 70/70 e2e verdes |
+| `[x]` | P1-QA-02 | Actualizar ciclo de estados: quitar READY/"Listo"; usar Preparar→Entregar | E-005 | Verificado 2026-06-10: ciclo PENDING→PREPARING→DELIVERED |
+| `[x]` | P1-QA-03 | Corregir aserciones admin en `full-audit.spec.ts` (`toHaveValue` en inputs) | E-002, E-006, E-007 | Verificado 2026-06-10: `full-audit.spec` verde |
 | `[ ]` | P1-QA-04 | Aislar sesión de caja entre tests E2E | E-008 | Caja con ventas assert estable |
 | `[ ]` | P1-QA-05 | Suite completa verde: `npm test && npm run typecheck && npm run lint && npm run test:e2e && npm run build` | — | CI local OK |
 | `[ ]` | P1-QA-06 | Playwright viewport tablet `768×1024` en config o proyecto dedicado | GAP | Al menos smoke kiosk en tablet |
@@ -149,7 +149,7 @@ Verificar manualmente o con E2E ampliado:
 
 | Estado | ID | Tarea | Ref | Verificación |
 | --- | --- | --- | --- | --- |
-| `[ ]` | P1-DOC-01 | Actualizar `README.md` checklist diario: Pendiente→Preparar→Entregar | E-010 | Sin "listo"/"pagado" |
+| `[x]` | P1-DOC-01 | Actualizar `README.md` checklist diario: Pendiente→Preparar→Entregar | E-010 | Hecho 2026-06-10: README sin "listo"/"pagado" |
 | `[ ]` | P1-DOC-02 | Actualizar `docs/APP_CONTEXT.md`: estados, gastos/finanzas en alcance V1 | E-010 | Alineado con código |
 | `[ ]` | P1-DOC-03 | Runbook de incidentes: DB caída, sesión expirada, caja no abre | — | Operador tiene contacto soporte |
 | `[ ]` | P1-DOC-04 | Credenciales y URLs de prod solo en canal seguro (no WhatsApp público) | — | — |

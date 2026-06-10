@@ -591,6 +591,8 @@ Fin de turno → /cash/close
 
 ### Credenciales demo
 
+> ⚠️ Solo para desarrollo local con `npm run db:seed`. **No usar en producción.** El bootstrap de producción crea el primer admin con credenciales reales vía `npm run db:seed:admin` (`ADMIN_EMAIL`/`ADMIN_PASSWORD`/`BRANCH_*`). Ver `docs/DEPLOY.md`.
+
 - Email: `admin@koi.local`
 - Password: `admin12345`
 - Rol: `ADMIN`
