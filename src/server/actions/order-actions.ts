@@ -25,8 +25,13 @@ export async function createPaidOrderAction(formData: FormData) {
   const recipeItems = await prisma.recipeItem.findMany({
     where: {
       OR: [{ productId: { in: allProductIds } }, { modifierId: { in: allModifierIds } }]
-    }
+    },
+    include: { ingredient: { select: { costPerUnit: true } } }
   });
+  const ingredientCosts: Record<string, number> = {};
+  for (const item of recipeItems) {
+    ingredientCosts[item.ingredientId] = toNumber(item.ingredient.costPerUnit);
+  }
   const prepared = preparePaidOrder({
     items,
     payments,
@@ -36,7 +41,8 @@ export async function createPaidOrderAction(formData: FormData) {
       modifierId: item.modifierId,
       ingredientId: item.ingredientId,
       quantity: toNumber(item.quantity)
-    }))
+    })),
+    ingredientCosts
   });
 
   const customerNit = sanitizeOrderNote(formData.get("customerNit") || "CF", 32).toUpperCase() || "CF";

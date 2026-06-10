@@ -55,7 +55,7 @@ async function main() {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   thirtyDaysAgo.setHours(8, 0, 0, 0);
 
-  let currentDay = new Date(thirtyDaysAgo);
+  const currentDay = new Date(thirtyDaysAgo);
 
   while (currentDay <= now) {
     const isToday = currentDay.toDateString() === now.toDateString();

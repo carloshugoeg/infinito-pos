@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { UserRole } from "@prisma/client";
-import { BarChart3, Grid2X2, LayoutDashboard, LogOut, Settings, WalletCards } from "lucide-react";
+import { BarChart3, Grid2X2, LayoutDashboard, LogOut, Receipt, Settings, TrendingUp, WalletCards } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { logoutAction } from "@/server/actions/auth-actions";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,8 @@ const links = [
   ["Caja", "/cash/close", WalletCards, "all"],
   ["Administracion", "/admin", Grid2X2, "admin"],
   ["Reportes", "/admin/reports", BarChart3, "admin"],
+  ["Gastos", "/admin/expenses", Receipt, "admin"],
+  ["Finanzas", "/admin/finance", TrendingUp, "admin"],
   ["Ajustes", "/admin/settings", Settings, "admin"]
 ] as const;
 

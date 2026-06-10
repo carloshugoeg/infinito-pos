@@ -21,15 +21,18 @@ export type ManualInventoryMovementType = "PURCHASE" | "WASTE" | "ADJUSTMENT";
 const manualInventoryMovementTypes: ManualInventoryMovementType[] = ["PURCHASE", "WASTE", "ADJUSTMENT"];
 const MAX_INVENTORY_QUANTITY = 999_999.999;
 
+export function recipeSourceMatchesItem(source: RecipeSource, item: { productId: string; modifierIds: string[] }) {
+  return (
+    source.productId === item.productId ||
+    (source.modifierId !== null && source.modifierId !== undefined && item.modifierIds.includes(source.modifierId))
+  );
+}
+
 export function resolveOrderIngredientUsage(items: OrderIngredientInput[], recipeItems: RecipeSource[]) {
   const usage = new Map<string, number>();
 
   for (const item of items) {
-    const sources = recipeItems.filter(
-      (recipe) =>
-        recipe.productId === item.productId ||
-        (recipe.modifierId !== null && recipe.modifierId !== undefined && item.modifierIds.includes(recipe.modifierId))
-    );
+    const sources = recipeItems.filter((recipe) => recipeSourceMatchesItem(recipe, item));
 
     for (const source of sources) {
       const current = usage.get(source.ingredientId) ?? 0;

@@ -4,6 +4,13 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_PROD_SEED !== "true") {
+    throw new Error(
+      "Refusing to run the demo seed in production. Create real data via the admin UI, " +
+        "or set ALLOW_PROD_SEED=true only if you truly intend to seed."
+    );
+  }
+
   const passwordHash = await bcrypt.hash("admin12345", 10);
 
   const branch = await prisma.branch.upsert({

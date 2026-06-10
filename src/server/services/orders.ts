@@ -5,6 +5,7 @@ import {
   calculateOrderTotals,
   MAX_CART_LINES,
   MAX_ITEM_QUANTITY,
+  roundMoney,
   sanitizeOrderNote,
   validateCheckout,
   validateModifierSelections,
@@ -12,6 +13,7 @@ import {
   type PaymentInput
 } from "@/domain/cart";
 import { resolveOrderIngredientUsage, type RecipeSource } from "@/domain/inventory";
+import { calculateOrderItemCost, type IngredientCostMap } from "@/domain/costing";
 
 export type IncomingCartItem = {
   productId: string;
@@ -46,6 +48,7 @@ export function preparePaidOrder(input: {
   payments: IncomingPayment[];
   catalog: CatalogProduct[];
   recipeItems: RecipeSource[];
+  ingredientCosts?: IngredientCostMap;
 }) {
   if (!Array.isArray(input.items) || input.items.length === 0) throw new Error("Agrega productos al carrito.");
   if (input.items.length > MAX_CART_LINES) throw new Error(`El carrito permite maximo ${MAX_CART_LINES} lineas.`);
@@ -74,15 +77,23 @@ export function preparePaidOrder(input: {
   });
   if (itemErrors.length) throw new Error(Array.from(new Set(itemErrors)).join(" "));
 
+  const ingredientCosts = input.ingredientCosts ?? {};
   const pricedItems = normalizedItems.map((item) => {
     const product = input.catalog.find((candidate) => candidate.id === item.productId);
     if (!product) throw new Error("Producto invalido.");
     const errors = validateModifierSelections(product, item.modifierIds);
     if (errors.length) throw new Error(errors.join(" "));
+    const cost = calculateOrderItemCost(
+      { productId: item.productId, quantity: item.quantity, modifierIds: item.modifierIds },
+      input.recipeItems,
+      ingredientCosts
+    );
     return {
       input: item,
       product,
       lineTotal: calculateCartItemTotal(product, item.modifierIds, item.quantity),
+      unitCost: cost.unitCost,
+      lineCost: cost.lineCost,
       modifiers: item.modifierIds.map((modifierId) => {
         const modifier = product.modifierGroups.flatMap((group) => group.modifiers).find((candidate) => candidate.id === modifierId);
         if (!modifier) throw new Error("Modificador invalido.");
@@ -91,9 +102,16 @@ export function preparePaidOrder(input: {
     };
   });
 
-  const totals = calculateOrderTotals(pricedItems.map((item) => ({ lineTotal: item.lineTotal })));
-  const checkoutErrors = validateCheckout({ itemCount: normalizedItems.length, total: totals.total, payments });
+  const baseTotals = calculateOrderTotals(pricedItems.map((item) => ({ lineTotal: item.lineTotal })));
+  const checkoutErrors = validateCheckout({ itemCount: normalizedItems.length, total: baseTotals.total, payments });
   if (checkoutErrors.length) throw new Error(checkoutErrors.join(" "));
+
+  const costOfGoodsTotal = roundMoney(pricedItems.reduce((sum, item) => sum + item.lineCost, 0));
+  const totals = {
+    ...baseTotals,
+    costOfGoodsTotal,
+    grossProfit: roundMoney(baseTotals.total - costOfGoodsTotal)
+  };
 
   return {
     payments,
@@ -128,6 +146,8 @@ export async function createPaidOrderInTransaction(
       discountTotal: input.prepared.totals.discountTotal,
       taxTotal: input.prepared.totals.taxTotal,
       total: input.prepared.totals.total,
+      costOfGoodsTotal: input.prepared.totals.costOfGoodsTotal,
+      grossProfit: input.prepared.totals.grossProfit,
       createdById: input.createdById,
       items: {
         create: input.prepared.pricedItems.map((item) => ({
@@ -136,6 +156,8 @@ export async function createPaidOrderInTransaction(
           basePriceSnapshot: item.product.basePrice,
           quantity: item.input.quantity,
           lineTotal: item.lineTotal,
+          unitCostSnapshot: item.unitCost,
+          lineCostSnapshot: item.lineCost,
           notes: item.input.notes || null,
           modifiers: {
             create: item.modifiers.map((modifier) => ({

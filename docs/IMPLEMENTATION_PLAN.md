@@ -8,7 +8,7 @@ Este archivo es la fuente de verdad para agentes y progreso del V1. Cada agente 
 - Una subtask solo puede marcarse como completada cuando este codificada, revisada y testeada.
 - No introducir multi-tenancy ni `business_id` en V1.
 - No crear KDS separado; preparacion vive dentro de `/kiosk`.
-- No agregar gastos, utilidad neta ni FEL real en V1 salvo placeholders de datos FEL.
+- No agregar FEL real en V1 salvo placeholders de datos FEL. Costos (COGS), gastos operativos, finanzas y correo diario son parte del alcance (Fase 1).
 - Mantener toda UI visible al usuario en espanol.
 - Preferir funciones de dominio puras para totales, seleccion de modificadores e inventario.
 - No duplicar logica de precios entre frontend y backend; el backend recalcula todo al cobrar.
@@ -104,6 +104,13 @@ Formato obligatorio por task/subtask: `Estado | Task | Codificado | Revisado | T
 | [x] | T11.2 Documentar env, setup y checklist piloto | Si | Si | Si | README actualizado con variables, comandos, backups y rutina diaria. |
 | [x] | T11.3 Verificar `next build` con base de datos real | Si | Si | Si | `npm run build` pasa contra Postgres local en `localhost:55432`. |
 | [x] | T11.4 Smoke test browser tablet del piloto | Si | Si | Si | Login -> caja -> venta -> preparacion -> cierre -> reporte verificado. |
+
+| [x] | T12 - Documentacion de contexto completo | Si | Si | No | `docs/APP_CONTEXT.md` describe modulos, dominio, rutas, flujos y reglas V1. |
+| [x] | T13 - Costos reales, gastos, finanzas y correo (Fase 1) | Si | Si | Si | Basado en `docs/APP_CONTEXT.md`. 49 tests, typecheck, lint y `next build` OK. |
+| [x] | T13.1 Snapshot de costo (COGS) en la orden | Si | Si | Si | `OrderItem.unitCostSnapshot`/`lineCostSnapshot` y `Order.costOfGoodsTotal`/`grossProfit`; `domain/costing.ts` puro; persistido en la transaccion de venta; usa `Ingredient.costPerUnit`. |
+| [x] | T13.2 Modulo de gastos (OPEX) | Si | Si | Si | `Expense`/`RecurringExpense`; `domain/expenses.ts` (validacion, expansion recurrente al vuelo, suma por categoria); `/admin/expenses`. |
+| [x] | T13.3 Modulo financiero | Si | Si | Si | `domain/finance.ts` (P&L puro) + `server/reports/finance.ts`; `/admin/finance` con UB/UN, margenes y rentabilidad por producto. |
+| [~] | T13.4 Correo diario al cerrar caja | Si | Si | Parcial | `services/notifications.ts` build/render unit-tested + `EmailLog` idempotente; enganchado en cierre de caja. Envio es stub (console.log); falta integrar proveedor (Resend/SMTP). |
 
 ## Hallazgos Del Excel Operativo
 
