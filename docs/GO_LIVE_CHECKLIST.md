@@ -4,6 +4,17 @@ Checklist priorizado para cerrar el piloto V1 y declarar Koi POS **listo para pr
 
 **Referencias:** `docs/DEPLOY.md` (runbook deploy) · `docs/ERRORES_Y_HALLAZGOS.md` · `docs/E2E_AUDIT_REPORT.md` · `docs/security-audit.md` · `README.md`
 
+**Entorno de producción (provisionado 10 jun 2026)**
+
+| Recurso | Valor |
+| --- | --- |
+| URL prod | `https://koi-pos.vercel.app` |
+| Vercel | proyecto `koi-pos` (team `hugos-projects-3379fa36`), branch prod = `main`, auto-deploy + previews ON |
+| Supabase | `koi-pos-prod` · ref `htlcnzlhuqvcovaggzos` · us-east-1 · plan Pro (~$10/mes) |
+| Conexión | app vía pooler transacción `:6543` (`?pgbouncer=true`); migraciones vía session pooler `:5432` |
+| Admin inicial | `admin@infinitopos.com` (rol ADMIN, sucursal `Pradera`/`SUC-001`) |
+| Pendiente seguridad | Desactivar **Data API** en Supabase (capa durable RLS); **rotar** la contraseña de la DB (definida fuera de git) antes de prod real |
+
 **Convención de prioridad**
 
 | Prioridad | Significado | Cuándo |
@@ -33,14 +44,14 @@ Checklist priorizado para cerrar el piloto V1 y declarar Koi POS **listo para pr
 
 | Estado | ID | Tarea | Verificación |
 | --- | --- | --- | --- |
-| `[ ]` | P0-INF-01 | PostgreSQL de prod aprovisionado (Supabase) | Conexión OK desde entorno deploy (runbook §1) |
-| `[ ]` | P0-INF-02 | `DATABASE_URL`, `DIRECT_URL` y `SESSION_SECRET` configurados en prod (nunca en git) | `vercel env` / panel sin valores vacíos (runbook §3) |
-| `[~]` | P0-INF-03 | `SESSION_SECRET` ≥ 32 caracteres aleatorios, único por entorno | Enforcement ≥32 en código (`session.ts`); generar+setear pendiente (runbook §2/§3) |
-| `[~]` | P0-INF-04 | Ejecutar `npm run db:deploy` (`prisma migrate deploy`) en prod | Migración commiteada + script `db:deploy` listos; aplicar en prod pendiente → enum `OrderStatus` incluye `PENDING` (ver E-011, runbook §4) |
-| `[~]` | P0-INF-05 | **No** ejecutar `npm run db:seed` en prod con credenciales demo | Guard en `seed.ts` bloquea prod; crear datos reales por UI pendiente (runbook §5) |
-| `[ ]` | P0-INF-06 | `npm run build` exitoso contra DB de prod | Build en CI o local con env prod (runbook §6) |
-| `[ ]` | P0-INF-07 | Backups automáticos de PostgreSQL activos + restore probado una vez | Restaurar snapshot de prueba (runbook §7) |
-| `[ ]` | P0-INF-08 | HTTPS activo; cookie `secure` en prod | Cookie `secure`+`httpOnly` ya en código; inspeccionar `koi_session` en prod (runbook §8) |
+| `[x]` | P0-INF-01 | PostgreSQL de prod aprovisionado (Supabase) | ✅ Proyecto `koi-pos-prod` (ref `htlcnzlhuqvcovaggzos`, us-east-1) ACTIVE_HEALTHY |
+| `[x]` | P0-INF-02 | `DATABASE_URL`, `DIRECT_URL` y `SESSION_SECRET` configurados en prod (nunca en git) | ✅ 3 vars en Vercel `koi-pos` (Production, encriptadas) vía pooler aws-1-us-east-1 |
+| `[x]` | P0-INF-03 | `SESSION_SECRET` ≥ 32 caracteres aleatorios, único por entorno | ✅ 48 chars (`openssl rand -base64 36`) seteado en Vercel Production |
+| `[x]` | P0-INF-04 | Ejecutar `npm run db:deploy` (`prisma migrate deploy`) en prod | ✅ 5 migraciones aplicadas; enum `OrderStatus` = `PENDING,PREPARING,DELIVERED,CANCELLED` |
+| `[x]` | P0-INF-05 | **No** ejecutar `npm run db:seed` en prod con credenciales demo | ✅ DB fresca (0 demo); admin real vía `db:seed:admin` (sin `admin@koi.local`) |
+| `[x]` | P0-INF-06 | `npm run build` exitoso contra DB de prod | ✅ Deploy READY (build 30s) en `koi-pos.vercel.app` |
+| `[~]` | P0-INF-07 | Backups automáticos de PostgreSQL activos + restore probado una vez | Backups diarios incluidos en plan Pro; **restore de prueba pendiente** (manual, runbook §7) |
+| `[x]` | P0-INF-08 | HTTPS activo; cookie `secure` en prod | ✅ HTTPS+HSTS; login real seteó `koi_session ... Secure; HttpOnly; SameSite=lax` |
 
 > **Nota:** la parte de repo/código (enforcement de `SESSION_SECRET`, guard del seed, migración
 > enum commiteada, script `db:deploy`, `directUrl` en el datasource) está hecha. La ejecución
@@ -52,17 +63,18 @@ Checklist priorizado para cerrar el piloto V1 y declarar Koi POS **listo para pr
 | Estado | ID | Tarea | Ref | Verificación |
 | --- | --- | --- | --- | --- |
 | `[x]` | P0-SEC-01 | `SESSION_SECRET` obligatorio: fallar si falta (sin fallback dev) | C1 | App no arranca sin env (`session.ts` lanza error; sin fallback) |
-| `[ ]` | P0-SEC-02 | Quitar `defaultValue` de email/password en `/login` | C2 | View-source sin credenciales |
+| `[x]` | P0-SEC-02 | Quitar `defaultValue` de email/password en `/login` | C2 | ✅ Quitado en `/login` y `/admin/users`; verificado en HTML de prod (sin credenciales) |
 | `[x]` | P0-SEC-03 | Seed no resetea admin en prod (`NODE_ENV` guard) | C3 | Guard en `seed.ts` lanza antes de escribir si `NODE_ENV=production` |
-| `[ ]` | P0-SEC-04 | Crear usuario admin real con password fuerte | — | Login con credencial nueva |
-| `[ ]` | P0-SEC-05 | Desactivar o eliminar `admin@koi.local` en prod | C3 | Login con demo falla |
-| `[ ]` | P0-SEC-06 | Crear usuario(s) OPERATOR para caja; sin rol admin innecesario | E-003 | OPERATOR no accede `/admin` |
+| `[x]` | P0-SEC-04 | Crear usuario admin real con password fuerte | — | ✅ `admin@infinitopos.com` creado vía `db:seed:admin`; login real OK |
+| `[x]` | P0-SEC-05 | Desactivar o eliminar `admin@koi.local` en prod | C3 | ✅ Nunca creado (DB fresca, sin seed demo); login demo falla |
+| `[ ]` | P0-SEC-06 | Crear usuario(s) OPERATOR para caja; sin rol admin innecesario | E-003 | OPERATOR no accede `/admin` — **pendiente (Stream C, vía UI)** |
+| `[x]` | P0-SEC-07 | **(Supabase) Cerrar Data API pública**: `anon` no debe leer tablas (`User.passwordHash`) | NUEVO | ✅ RLS habilitado + grants revocados a `anon`/`authenticated` → REST anon da 401. **Pendiente owner:** desactivar Data API en dashboard (capa durable) |
 
 ### Datos y configuración del negocio
 
 | Estado | ID | Tarea | Verificación |
 | --- | --- | --- | --- |
-| `[ ]` | P0-DATA-01 | Sucursal(es) reales creadas con código único | `/admin/branches` |
+| `[x]` | P0-DATA-01 | Sucursal(es) reales creadas con código único | ✅ Sucursal `Pradera` (`SUC-001`) creada en bootstrap; agregar más en `/admin/branches` |
 | `[ ]` | P0-DATA-02 | Catálogo real cargado (productos, grupos, modificadores, precios) | Venta de prueba con precios correctos |
 | `[ ]` | P0-DATA-03 | Recetas vinculadas a productos/modificadores | Inventario descuenta al cobrar |
 | `[ ]` | P0-DATA-04 | Ingredientes con `costPerUnit` para COGS/finanzas | `/admin/finance` muestra COGS > 0 tras venta |
