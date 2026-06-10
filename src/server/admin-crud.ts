@@ -30,6 +30,20 @@ export function parseNumberField(
   return parsed;
 }
 
+/**
+ * Igual que parseNumberField pero para campos opcionales: cadena vacia devuelve null
+ * (no aplica fallback). Util para metadatos de compra que pueden quedar sin definir.
+ */
+export function parseOptionalNumberField(
+  value: FormDataEntryValue | null | undefined,
+  label: string,
+  options: { min?: number; max?: number; decimals?: number } = {}
+): number | null {
+  const raw = String(value ?? "").trim();
+  if (raw === "") return null;
+  return parseNumberField(raw, label, options);
+}
+
 export function parseReportDateRange(from: string | null | undefined, to: string | null | undefined, now = new Date()) {
   const today = formatDateInput(now);
   const startInput = isDateInput(from) ? String(from) : today;

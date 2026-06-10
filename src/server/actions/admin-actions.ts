@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { calculateManualInventoryDelta, isManualInventoryMovementType, validateManualInventoryMovement } from "@/domain/inventory";
-import { chooseRemovalMode, normalizeBranchCode, normalizeFormText, parseNumberField } from "@/server/admin-crud";
+import { chooseRemovalMode, normalizeBranchCode, normalizeFormText, parseNumberField, parseOptionalNumberField } from "@/server/admin-crud";
 import { getActiveBranch, requireRole } from "@/server/auth";
 
 export async function createBranchAction(formData: FormData) {
@@ -301,14 +301,23 @@ export async function removeModifierAction(formData: FormData) {
   revalidatePath("/kiosk");
 }
 
+function readIngredientPurchaseFields(formData: FormData) {
+  return {
+    supplier: normalizeFormText(formData.get("supplier")) || null,
+    packQuantity: parseOptionalNumberField(formData.get("packQuantity"), "Cantidad por compra", { min: 0, max: 999_999.999, decimals: 3 }),
+    packPrice: parseOptionalNumberField(formData.get("packPrice"), "Precio de compra", { min: 0, max: 999_999.99, decimals: 2 })
+  };
+}
+
 export async function createIngredientAction(formData: FormData) {
   await requireRole([UserRole.ADMIN]);
   await prisma.ingredient.create({
     data: {
       name: normalizeFormText(formData.get("name")),
       unit: normalizeFormText(formData.get("unit")),
-      costPerUnit: parseNumberField(formData.get("costPerUnit"), "Costo unitario", { fallback: 0, min: 0, max: 999_999.999, decimals: 3 }),
-      lowStockThreshold: parseNumberField(formData.get("lowStockThreshold"), "Umbral bajo", { fallback: 0, min: 0, max: 999_999.999, decimals: 3 })
+      costPerUnit: parseNumberField(formData.get("costPerUnit"), "Costo unitario", { fallback: 0, min: 0, max: 999_999.9999, decimals: 4 }),
+      lowStockThreshold: parseNumberField(formData.get("lowStockThreshold"), "Umbral bajo", { fallback: 0, min: 0, max: 999_999.999, decimals: 3 }),
+      ...readIngredientPurchaseFields(formData)
     }
   });
   revalidatePath("/admin/ingredients");
@@ -321,8 +330,9 @@ export async function updateIngredientAction(formData: FormData) {
     data: {
       name: normalizeFormText(formData.get("name")),
       unit: normalizeFormText(formData.get("unit")),
-      costPerUnit: parseNumberField(formData.get("costPerUnit"), "Costo unitario", { fallback: 0, min: 0, max: 999_999.999, decimals: 3 }),
-      lowStockThreshold: parseNumberField(formData.get("lowStockThreshold"), "Umbral bajo", { fallback: 0, min: 0, max: 999_999.999, decimals: 3 })
+      costPerUnit: parseNumberField(formData.get("costPerUnit"), "Costo unitario", { fallback: 0, min: 0, max: 999_999.9999, decimals: 4 }),
+      lowStockThreshold: parseNumberField(formData.get("lowStockThreshold"), "Umbral bajo", { fallback: 0, min: 0, max: 999_999.999, decimals: 3 }),
+      ...readIngredientPurchaseFields(formData)
     }
   });
   revalidatePath("/admin/ingredients");

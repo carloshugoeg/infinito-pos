@@ -12,6 +12,19 @@ function roundCost(value: number) {
 }
 
 /**
+ * Costo unitario derivado de la presentacion de compra: precio del paquete / cantidad del paquete.
+ * Pensado como sugerencia para la UI de ingredientes (no sobreescribe costPerUnit). Guarda contra
+ * division por cero y entradas nulas devolviendo 0.
+ */
+export function derivePackUnitCost(
+  packPrice: number | null | undefined,
+  packQuantity: number | null | undefined
+): number {
+  if (!packPrice || !packQuantity || packQuantity <= 0) return 0;
+  return roundCost(packPrice / packQuantity);
+}
+
+/**
  * Costo real (COGS) de una linea de orden, derivado de la receta del producto base
  * mas la de los modificadores seleccionados, valorada al costo por unidad de cada ingrediente.
  * Espeja la columna TOTAL del Excel de costos. Funcion pura: no toca DB.
