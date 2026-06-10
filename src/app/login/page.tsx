@@ -30,11 +30,11 @@ async function LoginForm({ searchParams }: { searchParams: Promise<{ error?: str
       {params.error ? <div className="rounded-[1rem] bg-[#fff0ed] p-3 text-sm font-black text-[var(--danger)]">Credenciales incorrectas.</div> : null}
       <div>
         <Label htmlFor="email">Correo</Label>
-        <Input id="email" name="email" type="email" defaultValue="admin@koi.local" required />
+        <Input id="email" name="email" type="email" autoComplete="username" required />
       </div>
       <div>
         <Label htmlFor="password">Contrasena</Label>
-        <Input id="password" name="password" type="password" defaultValue="admin12345" required />
+        <Input id="password" name="password" type="password" autoComplete="current-password" required />
       </div>
       <Button type="submit" className="w-full">
         Entrar
