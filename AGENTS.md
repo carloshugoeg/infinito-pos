@@ -25,6 +25,22 @@ Before touching code, every agent must read:
 - Mark a subtask complete only when it is coded, reviewed, and tested.
 - Keep task notes short and useful.
 
+## Checklist Discipline
+
+Before touching code, **read the checklists that apply** to the task (see `docs/README.md`). After verified work, **update checklist state** — do not only report completion in chat.
+
+| Task area | Checklist(s) |
+| --- | --- |
+| Any code change | `docs/IMPLEMENTATION_PLAN.md` |
+| Deploy / infra / migrations / prod env | `docs/GO_LIVE_CHECKLIST.md` (P0-INF) + `docs/DEPLOY.md` |
+| Auth / session / seed / security | `docs/GO_LIVE_CHECKLIST.md` (P0-SEC) + `docs/qa/security.md` |
+| E2E / QA / test gaps | `docs/qa/open-issues.md` |
+| Scope questions | `docs/requirements.md` + `docs/APP_CONTEXT.md` |
+
+Workflow: (1) identify relevant item IDs at start, (2) respect open P0 gates, (3) update `IMPLEMENTATION_PLAN.md` always; update go-live or QA checklists when you directly close a tracked item. Grep by ID — do not read entire files unless needed.
+
+Cursor rule: `.cursor/rules/checklist-discipline.mdc` (always applied).
+
 ## Engineering Rules
 
 - Backend recalculates prices and totals before charging.

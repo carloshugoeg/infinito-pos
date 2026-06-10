@@ -64,7 +64,7 @@ El PRD original (`docs/requirements.md`) describe una visión SaaS multi-tenant 
 | Multi-tenancy (`business_id`) | No | Sí |
 | KDS separado | No — preparación en `/kiosk` | Módulo dedicado |
 | FEL real | Solo placeholders | Integración |
-| Gastos / utilidad neta | No | Sí |
+| Gastos / utilidad neta | Sí (Fase 1) | Sí |
 | Stock negativo en venta | Permitido (alerta en UI) | Configurable |
 | Catálogo global | Sí | Sí |
 | Inventario por sucursal | Sí | Sí |
@@ -189,7 +189,7 @@ Estados: `OPEN` → `CLOSED`. Solo una sesión abierta por sucursal a la vez.
 | `OrderItemModifier` | Modificadores elegidos con snapshots |
 | `Payment` | Pago por método (`CASH`, `CARD`, `TRANSFER`), monto, vuelto |
 
-Estados de orden: `PAID` → `PREPARING` → `READY` → `DELIVERED` | `CANCELLED`
+Estados de orden: `PENDING` → `PREPARING` → `DELIVERED` | `CANCELLED`
 
 #### Configuración
 
@@ -290,8 +290,8 @@ erDiagram
 - Upsert de `Customer` si NIT ≠ CF
 
 #### Preparación (integrada)
-- Panel de pedidos activos (`PAID`, `PREPARING`, `READY`)
-- Avance de estado: Pagado → Preparando → Listo → Entregado
+- Panel de pedidos activos (`PENDING`, `PREPARING`)
+- Avance de estado: Pendiente → Preparando → Entregado
 - Cancelación con razón (no en órdenes `DELIVERED`/`CANCELLED`)
 - Detalle de modificadores por ítem
 
@@ -421,7 +421,7 @@ Toda la lógica crítica vive en `src/domain/` y se reutiliza en cliente (previe
 
 **Transiciones permitidas:**
 ```
-PAID → PREPARING → READY → DELIVERED
+PENDING → PREPARING → DELIVERED
 (cualquier activo) → CANCELLED (acción separada)
 ```
 
@@ -536,7 +536,7 @@ createPaidOrderAction
 2. Seleccionar sucursal (si aplica)
 3. Abrir caja con monto inicial
 4. Vender desde kiosco
-5. Avanzar pedidos: Pagado → Preparando → Listo → Entregado
+5. Avanzar pedidos: Pendiente → Preparando → Entregado
 6. Registrar compras/mermas/ajustes de inventario si aplica
 7. Cerrar caja con conteo físico
 8. Revisar reportes y exportar CSV
@@ -648,6 +648,20 @@ Crea idempotentemente:
 npm test && npm run typecheck && npm run lint && npm run build
 ```
 
+### Matriz QA caos (kiosco)
+
+Casos de borde para pagos, sanitización y preparación. Cobertura en tests de dominio y server.
+
+| Área | Caso clave | Cobertura |
+| --- | --- | --- |
+| Vuelto | Total decimal, billete grande, desglose mínimo | `cart.test.ts` |
+| Pago | Monto menor al total; total cero; vuelto sin efectivo aplicado | `cart.test.ts`, UI/server |
+| Sanitización | `NaN`/`Infinity`, método inválido, nota XSS, nota >250 chars | `cart.test.ts`, server |
+| Estados | Entregar sin preparar; mutar orden cerrada | `order-status.test.ts` |
+| Inventario | Venta con stock insuficiente (permite negativo) | `inventory.test.ts` |
+| Concurrencia | Doble submit → botón `Cobrando...` deshabilitado | UI |
+| Transacción | Cobro atómico (orden + pagos + inventario) | server transaction |
+
 ---
 
 ## 15. Configuración y despliegue local
@@ -705,11 +719,15 @@ infinito-pos/
 │       ├── services/      # Orquestación
 │       ├── queries/       # Lecturas
 │       └── reports/       # Reporte empírico diario
-├── e2e/                   # Playwright specs
+├── e2e/                   # Playwright specs (incl. full-audit.spec.ts)
 ├── docs/
+│   ├── README.md          # Índice de documentación
 │   ├── requirements.md    # PRD original (visión completa)
 │   ├── IMPLEMENTATION_PLAN.md  # Progreso V1
-│   └── APP_CONTEXT.md     # Este documento
+│   ├── APP_CONTEXT.md     # Este documento
+│   ├── DEPLOY.md          # Runbook Supabase + Vercel
+│   ├── GO_LIVE_CHECKLIST.md    # P0/P1/P2/P3 go-live
+│   └── qa/                # Auditorías (E2E, seguridad, issues abiertos)
 ├── AGENTS.md              # Reglas para agentes
 └── README.md              # Setup operativo
 ```
@@ -718,11 +736,16 @@ infinito-pos/
 
 ## Referencias cruzadas
 
+- **Índice de docs:** `docs/README.md`
 - **Requisitos de producto (visión):** `docs/requirements.md`
 - **Estado de implementación:** `docs/IMPLEMENTATION_PLAN.md`
 - **Reglas para agentes:** `AGENTS.md`
 - **Setup piloto:** `README.md`
-- **Auditoría de seguridad:** `docs/security-audit.md`
+- **Deploy producción:** `docs/DEPLOY.md`
+- **Checklist go-live:** `docs/GO_LIVE_CHECKLIST.md`
+- **Auditoría E2E (snapshot):** `docs/qa/e2e-audit-2026-06-09.md`
+- **Issues abiertos QA:** `docs/qa/open-issues.md`
+- **Seguridad:** `docs/qa/security.md`
 
 ---
 
