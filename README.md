@@ -40,7 +40,7 @@ Para el deploy de produccion sigue el runbook completo en `docs/DEPLOY.md` (Supa
 1. Seleccionar sucursal.
 2. Abrir caja con monto inicial.
 3. Vender desde kiosco y revisar pedidos activos.
-4. Avanzar pedidos: pagado -> preparando -> listo -> entregado.
+4. Avanzar pedidos: pendiente -> preparar -> entregar.
 5. Registrar compras, mermas o ajustes de inventario si aplica.
 6. Cerrar caja con conteo fisico.
 7. Revisar reportes y exportar CSV.
