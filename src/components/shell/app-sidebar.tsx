@@ -51,7 +51,7 @@ export function AppSidebar({ companyName, userRole }: { companyName: string; use
         </div>
 
         {/* Desktop View Header */}
-        <Link href="/kiosk" className={`hidden lg:flex items-center gap-3 text-xl font-black w-full overflow-hidden transition-all duration-300 ${!isExpanded ? "justify-center" : ""}`}>
+        <Link href="/kiosk" title={companyName} aria-label={companyName} className={`hidden lg:flex items-center gap-3 text-xl font-black w-full overflow-hidden transition-all duration-300 ${!isExpanded ? "justify-center" : ""}`}>
           <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[var(--primary)] text-2xl text-[var(--primary-foreground)] shadow-lg shadow-[var(--primary)]/20">
             {companyName.slice(0, 1)}
           </span>
