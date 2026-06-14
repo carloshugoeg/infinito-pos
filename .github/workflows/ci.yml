@@ -33,14 +33,11 @@ jobs:
       - run: npm test
       - run: npm run build
 
-  # Job de E2E: levanta Postgres, migra, siembra y corre Playwright.
-  # No bloquea el merge todavía: la suite arrastra acoplamiento de estado de caja entre
-  # tests (P1-QA-04) y falta el viewport tablet (P1-QA-06). Corre para visibilidad/artefacto;
-  # quitar `continue-on-error` cuando P1-QA-04 quede cerrado y la suite sea estable.
+  # Job de E2E: levanta Postgres efímero, migra, siembra (ambos seeds) y corre Playwright
+  # contra una DB fresca — estable como gate (67/67). Pendiente menor: viewport tablet (P1-QA-06).
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
-    continue-on-error: true
     services:
       postgres:
         image: postgres:16
