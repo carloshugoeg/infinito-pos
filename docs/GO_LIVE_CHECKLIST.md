@@ -112,7 +112,7 @@ Ejecutar **una vez en el dispositivo real** (768×1024 o el tablet del piloto):
 | `[~]` | P1-QA-05 | Suite completa verde: `npm test && npm run typecheck && npm run lint && npm run test:e2e && npm run build` | — | unit/typecheck/lint/build verdes; e2e verde 2026-06-13 contra **DB fresca** (46/46) — la DB de dev arrastra grupos de modificadores obsoletos del seed y debe correrse contra DB dedicada/limpia (ver P1-QA-08) |
 | `[ ]` | P1-QA-06 | Playwright viewport tablet `768×1024` en config o proyecto dedicado | GAP | Al menos smoke kiosk en tablet |
 | `[x]` | P1-QA-07 | Verificar permisos OPERATOR end-to-end (crear user → login → bloqueo admin) | E-003 | Cubierto por `full-audit.spec.ts` ("crear operador → login → bloqueado en /admin"); verde 2026-06-13 |
-| `[x]` | P1-QA-08 | CI en GitHub Actions: lint/typecheck/test/build + e2e (Postgres efímero, ambos seeds) | NUEVO | `.github/workflows/ci.yml` en push/PR; DB fresca evita el estado sucio de dev |
+| `[x]` | P1-QA-08 | CI en GitHub Actions: lint/typecheck/test/build + e2e (Postgres efímero, ambos seeds) | NUEVO | `.github/workflows/ci.yml` en push/PR; gate principal (lint/typecheck/test/build) bloquea; e2e corre con `continue-on-error` hasta cerrar P1-QA-04 (acoplamiento de caja entre tests) |
 
 ### Seguridad alta
 
