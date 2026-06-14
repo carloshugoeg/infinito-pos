@@ -110,7 +110,7 @@ Ejecutar **una vez en el dispositivo real** (768×1024 o el tablet del piloto):
 | `[x]` | P1-QA-03 | Corregir aserciones admin en `full-audit.spec.ts` (`toHaveValue` en inputs) | E-002, E-006, E-007 | Verificado 2026-06-10: `full-audit.spec` verde |
 | `[x]` | P1-QA-04 | Aislar sesión de caja entre tests E2E | E-008 | Test de persistencia de sesión (`auth.spec.ts`) ya no fija ruta exacta (carrera /kiosk→/cash/open); kiosk usa `ensureCashOpen`/`cancelAllOrders` en beforeEach. Suite 67/67 estable en DB fresca/CI |
 | `[x]` | P1-QA-05 | Suite completa verde: `npm test && npm run typecheck && npm run lint && npm run test:e2e && npm run build` | — | unit/typecheck/lint/build verdes; **e2e 67/67** contra DB fresca 2026-06-13 (correr contra DB dedicada, no `koi_pos`: el seed upsert arrastra grupos obsoletos). Lo gatea CI (P1-QA-08) |
-| `[ ]` | P1-QA-06 | Playwright viewport tablet `768×1024` en config o proyecto dedicado | GAP | Al menos smoke kiosk en tablet |
+| `[x]` | P1-QA-06 | Playwright viewport tablet `768×1024` en config o proyecto dedicado | GAP | `e2e/tablet-smoke.spec.ts` (`test.use` viewport 768×1024); smoke de venta efectivo verde 2026-06-13 |
 | `[x]` | P1-QA-07 | Verificar permisos OPERATOR end-to-end (crear user → login → bloqueo admin) | E-003 | Cubierto por `full-audit.spec.ts` ("crear operador → login → bloqueado en /admin"); verde 2026-06-13 |
 | `[x]` | P1-QA-08 | CI en GitHub Actions: lint/typecheck/test/build + e2e (Postgres efímero, ambos seeds) | NUEVO | `.github/workflows/ci.yml` en push/PR; ambos jobs bloquean. DB fresca evita el estado sucio de dev; e2e 67/67 |
 
@@ -121,7 +121,7 @@ Ejecutar **una vez en el dispositivo real** (768×1024 o el tablet del piloto):
 | `[x]` | P1-SEC-01 | Reducir sesión a 4–8 h o documentar política de 14 h | A1 | TTL configurable vía `SESSION_TTL_HOURS` (default 12 h, acotado 1–24 h); `getSessionTtlMs` con unit test; documentado en `.env.example` |
 | `[x]` | P1-SEC-02 | Rate limit en `GET /admin/reports/export` (ej. 10/min) | A3 | 10/min por usuario en el route → 429 con `Retry-After`; `createRateLimiter` con unit test |
 | `[x]` | P1-SEC-03 | Límite de rango CSV (ej. máx. 31 días) | A3 | `reportRangeDays` > 31 → 400; unit test del límite |
-| `[ ]` | P1-SEC-04 | Revisar que `.env` / secretos no estén en repo ni logs Vercel públicos | — | `git log` + panel env |
+| `[x]` | P1-SEC-04 | Revisar que `.env` / secretos no estén en repo ni logs Vercel públicos | — | Auditado 2026-06-13: solo `.env.example` trackeado; `.env`/`.env*.local` en .gitignore; sin secretos en fuente ni en historial git. **Pendiente owner:** rotar password DB (compartido en chat) |
 | `[x]` | P1-SEC-05 | Cabeceras de seguridad base (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy) | NUEVO | En `next.config.ts`; verificado en runtime sobre `/login`. CSP estricta queda pendiente (CSS de marca inline) |
 
 ### Funcionalidad admin no auditada
@@ -143,17 +143,17 @@ Verificar manualmente o con E2E ampliado:
 
 | Estado | ID | Tarea | Ref | Verificación |
 | --- | --- | --- | --- | --- |
-| `[ ]` | P1-UX-01 | Sidebar: mostrar nombre empresa cuando está colapsado (`title` / tooltip) | E-009 | Visible sin hover |
-| `[ ]` | P1-UX-02 | Modificadores en retícula: `aria-label` con nombre completo | E-012 | Screen reader / Playwright encuentra "Crema" |
-| `[ ]` | P1-UX-03 | Probar retícula on/off en tablet real del piloto | — | Selección táctil cómoda |
+| `[x]` | P1-UX-01 | Sidebar: mostrar nombre empresa cuando está colapsado (`title` / tooltip) | E-009 | Ya implementado: logo con `title`+`aria-label={companyName}` (app-sidebar.tsx:54); cubierto por full-audit.spec |
+| `[x]` | P1-UX-02 | Modificadores en retícula: `aria-label` con nombre completo | E-012 | Ya implementado: `aria-label={modifier.name}` por tile (kiosk-client.tsx:260) |
+| `[ ]` | P1-UX-03 | Probar retícula on/off en tablet real del piloto | — | Selección táctil cómoda — **pendiente (tablet físico)** |
 
 ### Documentación operativa
 
 | Estado | ID | Tarea | Ref | Verificación |
 | --- | --- | --- | --- | --- |
 | `[x]` | P1-DOC-01 | Actualizar `README.md` checklist diario: Pendiente→Preparar→Entregar | E-010 | Hecho 2026-06-10: README sin "listo"/"pagado" |
-| `[ ]` | P1-DOC-02 | Actualizar `docs/APP_CONTEXT.md`: estados, gastos/finanzas en alcance V1 | E-010 | Alineado con código |
-| `[ ]` | P1-DOC-03 | Runbook de incidentes: DB caída, sesión expirada, caja no abre | — | Operador tiene contacto soporte |
+| `[x]` | P1-DOC-02 | Actualizar `docs/APP_CONTEXT.md`: estados, gastos/finanzas en alcance V1 | E-010 | Agregados módulos Gastos (6.9) y Finanzas (6.10), rutas/nav, TTL sesión 12 h, ref RUNBOOK |
+| `[x]` | P1-DOC-03 | Runbook de incidentes: DB caída, sesión expirada, caja no abre | — | `docs/RUNBOOK.md` (DB caída, login/sesión, caja, 500, inventario negativo). Falta rellenar contacto soporte (P1-OPS-04) |
 | `[ ]` | P1-DOC-04 | Credenciales y URLs de prod solo en canal seguro (no WhatsApp público) | — | — |
 
 ### Operación y monitoreo
@@ -162,7 +162,7 @@ Verificar manualmente o con E2E ampliado:
 | --- | --- | --- | --- |
 | `[ ]` | P1-OPS-01 | Dominio/custom URL configurado (si aplica) | HTTPS válido |
 | `[ ]` | P1-OPS-02 | Acceso a logs de deploy (Vercel/hosting) | Error 500 investigable |
-| `[ ]` | P1-OPS-03 | Procedimiento de rollback documentado (deploy anterior + DB) | Simulado en staging |
+| `[x]` | P1-OPS-03 | Procedimiento de rollback documentado (deploy anterior + DB) | `docs/RUNBOOK.md` Parte 1 (Vercel Instant Rollback/promote + restore Supabase + migración inversa). Falta simularlo una vez |
 | `[ ]` | P1-OPS-04 | Contacto de soporte técnico primeras 2 semanas definido | — |
 | `[ ]` | P1-OPS-05 | Plan de ventana de mantenimiento (migraciones fuera de horario pico) | — |
 
@@ -191,11 +191,11 @@ Verificar manualmente o con E2E ampliado:
 
 | Estado | ID | Tarea | Verificación |
 | --- | --- | --- | --- |
-| `[ ]` | P2-QA-01 | E2E: límite 60 líneas carrito | Server rechaza o alerta |
-| `[ ]` | P2-QA-02 | E2E: pago duplicado mismo método | Bloqueado |
-| `[ ]` | P2-QA-03 | E2E: cancelar orden y verificar excluida de reportes | CSV sin orden cancelada |
-| `[ ]` | P2-QA-04 | E2E: venta con stock insuficiente (negativo permitido) | Alerta en inventario |
-| `[ ]` | P2-QA-05 | Prueba de carga ligera: 10 ventas seguidas sin error | Sin duplicados ni 500 |
+| `[x]` | P2-QA-01 | Límite 60 líneas carrito | Unit test en `cart.test.ts` (`validateCheckout` rechaza >60). La UI no puede expresar el caso 1-a-1 → guarda de dominio |
+| `[x]` | P2-QA-02 | Pago duplicado mismo método | Ya cubierto en `cart.test.ts` (`validatePayments` → "Usa un solo registro por metodo de pago"). La UI tiene un input por método |
+| `[x]` | P2-QA-03 | E2E: cancelar orden y verificar excluida de reportes | `e2e/edge-cases-p2.spec.ts`: orden con cliente único ausente del CSV tras cancelar |
+| `[x]` | P2-QA-04 | E2E: venta con stock insuficiente (negativo permitido) | `e2e/edge-cases-p2.spec.ts`: venta deja stock negativo + alerta "Bajo/negativo" en `/admin/inventory` |
+| `[x]` | P2-QA-05 | Prueba de carga ligera: 10 ventas seguidas sin error | `e2e/edge-cases-p2.spec.ts`: 10 ventas → 10 órdenes, sin duplicados ni 500 |
 
 ### Escalabilidad (solo si multisucursal activo en piloto)
 
