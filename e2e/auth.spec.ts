@@ -66,10 +66,11 @@ test.describe("Autenticación", () => {
     await page.getByRole("button", { name: "Entrar" }).click();
     await expect(page).toHaveURL(/\/(kiosk|cash\/open|select-branch)/);
 
-    const urlBefore = page.url();
     await page.reload();
-    // Should stay on the same protected page, not redirect to login
+    // La sesión persiste tras recargar: no rebota a /login y sigue en una ruta autenticada.
+    // (No se fija una ruta exacta: el post-login encadena /kiosk → /cash/open si no hay caja,
+    // así que afirmar la ruta capturada sería una carrera con esos redirects.)
     await expect(page).not.toHaveURL(/\/login/);
-    await expect(page).toHaveURL(new RegExp(new URL(urlBefore).pathname));
+    await expect(page).toHaveURL(/\/(kiosk|cash\/open|select-branch)/);
   });
 });

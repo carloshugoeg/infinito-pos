@@ -61,6 +61,17 @@ export function parseReportDateRange(from: string | null | undefined, to: string
   return { start, end, startInput, endInput };
 }
 
+/** Máximo de días permitido en exportaciones de reportes (P1-SEC-03). */
+export const MAX_REPORT_RANGE_DAYS = 31;
+
+/**
+ * Días completos cubiertos por un rango de `parseReportDateRange` (el `end` es exclusivo,
+ * así que un solo día devuelve 1). Se redondea para tolerar saltos de horario (DST).
+ */
+export function reportRangeDays(range: { start: Date; end: Date }) {
+  return Math.round((range.end.getTime() - range.start.getTime()) / 86_400_000);
+}
+
 function hasDecimalPrecision(value: number, decimals: number) {
   const factor = 10 ** decimals;
   return Math.abs(value * factor - Math.round(value * factor)) < 1e-9;

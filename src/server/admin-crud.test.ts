@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { chooseRemovalMode, normalizeBranchCode, normalizeFormText, parseNumberField, parseReportDateRange } from "@/server/admin-crud";
+import {
+  MAX_REPORT_RANGE_DAYS,
+  chooseRemovalMode,
+  normalizeBranchCode,
+  normalizeFormText,
+  parseNumberField,
+  parseReportDateRange,
+  reportRangeDays
+} from "@/server/admin-crud";
 
 describe("admin CRUD helpers", () => {
   it("normalizes text fields with fallback values", () => {
@@ -35,5 +43,17 @@ describe("admin CRUD helpers", () => {
     expect(range.end.getDate()).toBe(7);
     expect(range.startInput).toBe("2026-05-05");
     expect(range.endInput).toBe("2026-05-06");
+  });
+
+  it("cuenta los dias cubiertos por un rango (end exclusivo)", () => {
+    const oneDay = parseReportDateRange("2026-05-05", "2026-05-05", new Date(2026, 4, 7));
+    expect(reportRangeDays(oneDay)).toBe(1);
+
+    const fullMonth = parseReportDateRange("2026-01-01", "2026-01-31", new Date(2026, 1, 1));
+    expect(reportRangeDays(fullMonth)).toBe(MAX_REPORT_RANGE_DAYS);
+
+    const overLimit = parseReportDateRange("2026-01-01", "2026-02-01", new Date(2026, 1, 2));
+    expect(reportRangeDays(overLimit)).toBe(32);
+    expect(reportRangeDays(overLimit)).toBeGreaterThan(MAX_REPORT_RANGE_DAYS);
   });
 });

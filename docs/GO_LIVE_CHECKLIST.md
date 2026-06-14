@@ -108,19 +108,21 @@ Ejecutar **una vez en el dispositivo real** (768×1024 o el tablet del piloto):
 | `[x]` | P1-QA-01 | Actualizar `e2e/kiosk.spec.ts`: "Pagado" → "Pendiente" | E-004 | Verificado 2026-06-10: 70/70 e2e verdes |
 | `[x]` | P1-QA-02 | Actualizar ciclo de estados: quitar READY/"Listo"; usar Preparar→Entregar | E-005 | Verificado 2026-06-10: ciclo PENDING→PREPARING→DELIVERED |
 | `[x]` | P1-QA-03 | Corregir aserciones admin en `full-audit.spec.ts` (`toHaveValue` en inputs) | E-002, E-006, E-007 | Verificado 2026-06-10: `full-audit.spec` verde |
-| `[ ]` | P1-QA-04 | Aislar sesión de caja entre tests E2E | E-008 | Caja con ventas assert estable |
-| `[ ]` | P1-QA-05 | Suite completa verde: `npm test && npm run typecheck && npm run lint && npm run test:e2e && npm run build` | — | CI local OK |
+| `[x]` | P1-QA-04 | Aislar sesión de caja entre tests E2E | E-008 | Test de persistencia de sesión (`auth.spec.ts`) ya no fija ruta exacta (carrera /kiosk→/cash/open); kiosk usa `ensureCashOpen`/`cancelAllOrders` en beforeEach. Suite 67/67 estable en DB fresca/CI |
+| `[x]` | P1-QA-05 | Suite completa verde: `npm test && npm run typecheck && npm run lint && npm run test:e2e && npm run build` | — | unit/typecheck/lint/build verdes; **e2e 67/67** contra DB fresca 2026-06-13 (correr contra DB dedicada, no `koi_pos`: el seed upsert arrastra grupos obsoletos). Lo gatea CI (P1-QA-08) |
 | `[ ]` | P1-QA-06 | Playwright viewport tablet `768×1024` en config o proyecto dedicado | GAP | Al menos smoke kiosk en tablet |
-| `[ ]` | P1-QA-07 | Verificar permisos OPERATOR end-to-end (crear user → login → bloqueo admin) | E-003 | Test pasa |
+| `[x]` | P1-QA-07 | Verificar permisos OPERATOR end-to-end (crear user → login → bloqueo admin) | E-003 | Cubierto por `full-audit.spec.ts` ("crear operador → login → bloqueado en /admin"); verde 2026-06-13 |
+| `[x]` | P1-QA-08 | CI en GitHub Actions: lint/typecheck/test/build + e2e (Postgres efímero, ambos seeds) | NUEVO | `.github/workflows/ci.yml` en push/PR; ambos jobs bloquean. DB fresca evita el estado sucio de dev; e2e 67/67 |
 
 ### Seguridad alta
 
 | Estado | ID | Tarea | Ref | Verificación |
 | --- | --- | --- | --- | --- |
-| `[ ]` | P1-SEC-01 | Reducir sesión a 4–8 h o documentar política de 14 h | A1 | Decisión documentada |
-| `[ ]` | P1-SEC-02 | Rate limit en `GET /admin/reports/export` (ej. 10/min) | A3 | 11º request bloqueado |
-| `[ ]` | P1-SEC-03 | Límite de rango CSV (ej. máx. 31 días) | A3 | Export >31 días rechazado |
+| `[x]` | P1-SEC-01 | Reducir sesión a 4–8 h o documentar política de 14 h | A1 | TTL configurable vía `SESSION_TTL_HOURS` (default 12 h, acotado 1–24 h); `getSessionTtlMs` con unit test; documentado en `.env.example` |
+| `[x]` | P1-SEC-02 | Rate limit en `GET /admin/reports/export` (ej. 10/min) | A3 | 10/min por usuario en el route → 429 con `Retry-After`; `createRateLimiter` con unit test |
+| `[x]` | P1-SEC-03 | Límite de rango CSV (ej. máx. 31 días) | A3 | `reportRangeDays` > 31 → 400; unit test del límite |
 | `[ ]` | P1-SEC-04 | Revisar que `.env` / secretos no estén en repo ni logs Vercel públicos | — | `git log` + panel env |
+| `[x]` | P1-SEC-05 | Cabeceras de seguridad base (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy) | NUEVO | En `next.config.ts`; verificado en runtime sobre `/login`. CSP estricta queda pendiente (CSS de marca inline) |
 
 ### Funcionalidad admin no auditada
 

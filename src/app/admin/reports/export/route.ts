@@ -2,15 +2,36 @@ import { UserRole } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { paymentMethodLabel } from "@/lib/labels";
+import { createRateLimiter } from "@/lib/rate-limit";
 import { formatCurrency, toNumber } from "@/lib/utils";
-import { parseReportDateRange } from "@/server/admin-crud";
+import { MAX_REPORT_RANGE_DAYS, parseReportDateRange, reportRangeDays } from "@/server/admin-crud";
 import { getActiveBranch, requireRole } from "@/server/auth";
 
+// Por usuario: 10 exportaciones por minuto (P1-SEC-02). Estado en memoria de instancia tibia.
+const exportLimiter = createRateLimiter({ limit: 10, windowMs: 60_000 });
+
 export async function GET(request: Request) {
-  await requireRole([UserRole.ADMIN]);
+  const { user } = await requireRole([UserRole.ADMIN]);
+
+  const rate = exportLimiter.check(user.id);
+  if (!rate.allowed) {
+    return new NextResponse("Demasiadas exportaciones. Intenta de nuevo en un momento.", {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil(rate.retryAfterMs / 1000)) }
+    });
+  }
+
   const { branch } = await getActiveBranch();
   const url = new URL(request.url);
   const range = parseReportDateRange(url.searchParams.get("from"), url.searchParams.get("to"));
+
+  if (reportRangeDays(range) > MAX_REPORT_RANGE_DAYS) {
+    return new NextResponse(
+      `El rango no puede exceder ${MAX_REPORT_RANGE_DAYS} días. Reduce el periodo y vuelve a exportar.`,
+      { status: 400 }
+    );
+  }
+
   const orders = await prisma.order.findMany({
     where: {
       branchId: branch.id,
