@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancela ejecuciones previas del mismo ref para no malgastar minutos.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Gate principal: rápido y sin base de datos real.
+  check:
+    name: Lint · Typecheck · Test · Build
+    runs-on: ubuntu-latest
+    env:
+      # Valores ficticios: prisma generate y next build no consultan la DB.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/koi_pos?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/koi_pos?schema=public
+      SESSION_SECRET: ci-dummy-session-secret-min-32-chars-1234567890
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  # Job opcional de E2E: levanta Postgres, migra, siembra y corre Playwright.
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: koi_pos
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/koi_pos?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/koi_pos?schema=public
+      SESSION_SECRET: ci-dummy-session-secret-min-32-chars-1234567890
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run db:deploy
+      # Ambos seeds, en orden: db:seed crea admin+sucursal; db:seed:infinito carga el
+      # catálogo real que la suite kiosk espera. CI usa una DB fresca, así que no arrastra
+      # los grupos de modificadores obsoletos que ensucian las DB de desarrollo de larga vida.
+      - run: npm run db:seed
+      - run: npm run db:seed:infinito
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

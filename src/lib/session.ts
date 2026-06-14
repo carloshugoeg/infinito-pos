@@ -26,6 +26,24 @@ function sign(value: string) {
   return crypto.createHmac("sha256", getSecret()).update(value).digest("hex");
 }
 
+const DEFAULT_SESSION_TTL_HOURS = 12;
+const MIN_SESSION_TTL_HOURS = 1;
+const MAX_SESSION_TTL_HOURS = 24;
+
+/**
+ * Duración de la sesión en ms (P1-SEC-01). Configurable vía `SESSION_TTL_HOURS`; por defecto
+ * 12 h (cubre un turno largo sin cierre de sesión a media jornada). Valores inválidos o fuera
+ * del rango 1–24 h caen al límite más cercano / al default.
+ */
+export function getSessionTtlMs() {
+  const raw = process.env.SESSION_TTL_HOURS;
+  const parsed = raw === undefined ? NaN : Number(raw);
+  const hours = Number.isFinite(parsed) && parsed > 0
+    ? Math.min(MAX_SESSION_TTL_HOURS, Math.max(MIN_SESSION_TTL_HOURS, parsed))
+    : DEFAULT_SESSION_TTL_HOURS;
+  return hours * 60 * 60 * 1000;
+}
+
 export function encodeSession(payload: SessionPayload) {
   const body = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
   return `${body}.${sign(body)}`;
@@ -51,7 +69,7 @@ export async function readSession() {
 
 export async function writeSession(payload: Omit<SessionPayload, "expiresAt">) {
   const store = await cookies();
-  const expiresAt = Date.now() + 1000 * 60 * 60 * 14;
+  const expiresAt = Date.now() + getSessionTtlMs();
   store.set(SESSION_COOKIE, encodeSession({ ...payload, expiresAt }), {
     httpOnly: true,
     sameSite: "lax",
