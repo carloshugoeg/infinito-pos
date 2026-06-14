@@ -113,6 +113,12 @@ describe("cart domain", () => {
     );
   });
 
+  it("bloquea checkout que excede el limite de 60 lineas de carrito (P2-QA-01)", () => {
+    const payments = [{ method: "CASH" as const, amount: 100, receivedAmount: 100 }];
+    expect(validateCheckout({ itemCount: 60, total: 100, payments })).not.toContain("El carrito permite maximo 60 lineas.");
+    expect(validateCheckout({ itemCount: 61, total: 100, payments })).toContain("El carrito permite maximo 60 lineas.");
+  });
+
   it("sanitiza notas con scripts y texto excesivo", () => {
     const garbage = `${"<script>alert('x')</script>"}${"a".repeat(5000)}`;
     const sanitized = sanitizeOrderNote(garbage);
