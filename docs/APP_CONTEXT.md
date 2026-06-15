@@ -228,7 +228,7 @@ erDiagram
 **Funciones:**
 - Login con email/password (`loginAction`)
 - Logout (`logoutAction`)
-- Sesión firmada HMAC-SHA256 en cookie `koi_session` (14 horas)
+- Sesión firmada HMAC-SHA256 en cookie `koi_session` (12 h por defecto, configurable vía `SESSION_TTL_HOURS`)
 - Selector de sucursal si el usuario tiene más de una (`/select-branch`)
 - Auto-selección si solo tiene una sucursal
 
@@ -357,6 +357,8 @@ erDiagram
 | Ingredientes | `/admin/ingredients` | Insumos |
 | Inventario | `/admin/inventory` | Stock y movimientos |
 | Reportes | `/admin/reports` | Analytics |
+| Gastos | `/admin/expenses` | Gastos puntuales y recurrentes |
+| Finanzas | `/admin/finance` | P&L: ingresos, COGS, OPEX, utilidad neta, rentabilidad por producto |
 | Ajustes | `/admin/settings` | Branding, colores, moneda, retícula modificadores |
 
 ---
@@ -371,6 +373,33 @@ erDiagram
 - `accentColor`, `sidebarColor`, `backgroundColor`
 - `logoUrl` (opcional)
 - `modifierGridEnabled` — tarjetas grandes para modificadores
+
+---
+
+### 6.9 Gastos (OPEX)
+
+**Propósito:** Registrar el gasto operativo del negocio para el cálculo de utilidad.
+
+**Funciones:**
+- Gastos **puntuales**: descripción, monto, categoría, fecha; eliminar.
+- Gastos **recurrentes**: plantilla activable/desactivable que se expande al periodo en finanzas.
+- Filtro por categoría/fecha.
+
+**Pantalla:** `/admin/expenses` · **Archivos:** `src/server/actions/expense-actions.ts`, `src/domain/expenses.ts`
+
+---
+
+### 6.10 Finanzas (P&L)
+
+**Propósito:** Estado de resultados del periodo para el dueño (alcance V1, Fase 1).
+
+**Funciones:**
+- Filtro por rango de fechas.
+- Ingresos (ventas no canceladas), **COGS** (costo de recetas vendidas), **OPEX** (gastos +
+  recurrentes), **utilidad neta**.
+- **Rentabilidad por producto** (margen por ítem vendido).
+
+**Pantalla:** `/admin/finance` · **Archivos:** `src/domain/finance.ts`, `src/domain/costing.ts`
 
 ---
 
@@ -444,7 +473,9 @@ PENDING → PREPARING → DELIVERED
 | `/admin/ingredients` | ADMIN | Ingredientes |
 | `/admin/inventory` | ADMIN | Inventario |
 | `/admin/reports` | ADMIN | Reportes |
-| `/admin/reports/export` | ADMIN | CSV download |
+| `/admin/reports/export` | ADMIN | CSV download (rate-limit 10/min, rango máx. 31 días) |
+| `/admin/expenses` | ADMIN | Gastos (puntuales y recurrentes) |
+| `/admin/finance` | ADMIN | Finanzas (P&L) |
 | `/admin/settings` | ADMIN | Ajustes globales |
 
 ### Navegación (`AppShell`)
@@ -455,6 +486,8 @@ PENDING → PREPARING → DELIVERED
 | Caja | Todos |
 | Administración | ADMIN |
 | Reportes | ADMIN |
+| Gastos | ADMIN |
+| Finanzas | ADMIN |
 | Ajustes | ADMIN |
 
 **OPERATOR** solo ve Kiosco y Caja; intentos de acceder a `/admin/*` redirigen a `/kiosk`.
@@ -516,7 +549,7 @@ createPaidOrderAction
 - Cookie: `koi_session` (HTTP-only, SameSite=lax, secure en producción)
 - Payload: `{ userId, activeBranchId?, expiresAt }`
 - Firma: HMAC-SHA256 con `SESSION_SECRET`
-- Duración: 14 horas
+- Duración: **12 horas** por defecto, configurable con `SESSION_TTL_HOURS` (acotado 1–24 h)
 
 ### Guards
 
@@ -728,6 +761,7 @@ infinito-pos/
 │   ├── IMPLEMENTATION_PLAN.md  # Progreso V1
 │   ├── APP_CONTEXT.md     # Este documento
 │   ├── DEPLOY.md          # Runbook Supabase + Vercel
+│   ├── RUNBOOK.md         # Incidentes + rollback (operación)
 │   ├── GO_LIVE_CHECKLIST.md    # P0/P1/P2/P3 go-live
 │   └── qa/                # Auditorías (E2E, seguridad, issues abiertos)
 ├── AGENTS.md              # Reglas para agentes
@@ -744,6 +778,7 @@ infinito-pos/
 - **Reglas para agentes:** `AGENTS.md`
 - **Setup piloto:** `README.md`
 - **Deploy producción:** `docs/DEPLOY.md`
+- **Runbook incidentes + rollback:** `docs/RUNBOOK.md`
 - **Checklist go-live:** `docs/GO_LIVE_CHECKLIST.md`
 - **Auditoría E2E (snapshot):** `docs/qa/e2e-audit-2026-06-09.md`
 - **Issues abiertos QA:** `docs/qa/open-issues.md`
