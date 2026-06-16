@@ -49,6 +49,7 @@ const INGREDIENTS: IngredientSeed[] = [
   { name: "Topping Almendra", unit: "g", costPerUnit: 0.1069, supplier: "Pricesmart", packQuantity: 907, packPrice: 99.95 },
   { name: "Topping Coco", unit: "g", costPerUnit: 0.0705, supplier: "Eben Ezer", packQuantity: 4540, packPrice: 320 },
   { name: "Topping Pistacho", unit: "g", costPerUnit: 0.2323, supplier: "Pricesmart", packQuantity: 680, packPrice: 157.95 },
+  { name: "Topping Yogurt", unit: "g", costPerUnit: 0.05 }, // confirmado por el dueno 2026-06-15: 50g = Q2.50 -> Q0.05/g
   // Bases preparadas en casa (costo unitario tomado de la hoja RECETAS; sin presentacion de compra)
   { name: "Crema", unit: "g", costPerUnit: 0.0459, supplier: "Preparado en casa" },
   { name: "Chocolate con leche (cobertura)", unit: "g", costPerUnit: 0.1592, supplier: "Preparado en casa" }, // C.G mezcla (hoja RECETAS), que es el costo que usan las tarjetas COSTOS
@@ -152,8 +153,8 @@ const PRODUCTS: ProductSeed[] = [
     basePrice: 50,
     sortOrder: 9,
     isActive: true,
-    // El Excel incluye 50g de topping sin costear; se omite (garnish sin precio definido).
-    recipe: [...BASE, ["Yogurt natural", 110], ["Fresa", 160]]
+    // Topping confirmado por el dueno (2026-06-15): 50g = Q2.50 (Q0.05/g). TOTAL Q13.53, U.B Q36.47.
+    recipe: [...BASE, ["Topping Yogurt", 50], ["Yogurt natural", 110], ["Fresa", 160]]
   },
   {
     name: "Dubai",
@@ -220,10 +221,15 @@ async function main() {
   }
 
   // 1) Sucursal operativa (reutiliza la del bootstrap; no se siembra inventario).
+  //    Mismo convenio que db:seed:admin: BRANCH_CODE/BRANCH_NAME por entorno.
+  //    Default CENTRO (dev local); en prod exporta los de la sucursal real
+  //    (p.ej. BRANCH_CODE=SUC-001 BRANCH_NAME=Pradera) para no crear una duplicada.
+  const branchCode = (process.env.BRANCH_CODE ?? "CENTRO").toUpperCase();
+  const branchName = (process.env.BRANCH_NAME ?? "Sucursal Centro").trim();
   await prisma.branch.upsert({
-    where: { code: "CENTRO" },
-    update: {},
-    create: { name: "Sucursal Centro", code: "CENTRO", address: "Guatemala" }
+    where: { code: branchCode },
+    update: { name: branchName, isActive: true },
+    create: { name: branchName, code: branchCode, address: "Guatemala" }
   });
 
   // 2) Ocultar catalogo demo.
