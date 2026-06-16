@@ -20,6 +20,7 @@
     "db:seed:admin": "tsx prisma/seed-admin.ts",
     "db:seed:demo": "tsx prisma/seed-demo.ts",
     "db:seed:infinito": "tsx prisma/seed-infinito.ts",
+    "db:reset-password": "tsx prisma/reset-password.ts",
     "db:studio": "prisma studio"
   },
   "dependencies": {
