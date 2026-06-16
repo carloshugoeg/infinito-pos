@@ -1,4 +1,5 @@
 import { UserRole } from "@prisma/client";
+import { IngredientIcon } from "@/components/icons/ingredient-icon";
 import { AppShell } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,7 +45,9 @@ export default async function IngredientsPage() {
                 );
                 return (
                 <div key={item.id} className="rounded-[1.5rem] border border-[var(--border)] p-4">
-                  <form action={updateIngredientAction} className="grid gap-3 xl:grid-cols-[1fr_0.5fr_0.7fr_0.7fr_auto]">
+                  <div className="flex items-start gap-3">
+                  <IngredientIcon name={item.name} chip />
+                  <form action={updateIngredientAction} className="grid flex-1 gap-3 xl:grid-cols-[1fr_0.5fr_0.7fr_0.7fr_auto]">
                     <input type="hidden" name="id" value={item.id} />
                     <div><Label>Nombre</Label><Input name="name" defaultValue={item.name} required /></div>
                     <div><Label>Unidad</Label><Input name="unit" defaultValue={item.unit} required /></div>
@@ -57,6 +60,7 @@ export default async function IngredientsPage() {
                     </div>
                     <div className="flex items-end xl:col-start-5 xl:row-start-1"><Button type="submit" variant="secondary">Guardar</Button></div>
                   </form>
+                  </div>
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                     <span className="text-sm font-black text-[var(--muted-foreground)]">
                       {item.isActive ? "Activo" : "Inactivo"} · {formatCurrency(toNumber(item.costPerUnit))}/{item.unit}

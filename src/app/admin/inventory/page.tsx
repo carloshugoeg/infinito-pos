@@ -1,4 +1,5 @@
 import { InventoryMovementType, UserRole } from "@prisma/client";
+import { IngredientIcon } from "@/components/icons/ingredient-icon";
 import { AppShell } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,7 +67,7 @@ export default async function InventoryPage() {
                   {inventory.map((item) => {
                     const qty = toNumber(item.quantityOnHand);
                     const low = qty <= toNumber(item.ingredient.lowStockThreshold);
-                    return <tr key={item.id}><Td>{item.ingredient.name}</Td><Td>{qty} {item.ingredient.unit}</Td><Td className={low ? "font-bold text-red-700" : "text-teal-700"}>{low ? "Bajo/negativo" : "OK"}</Td></tr>;
+                    return <tr key={item.id}><Td><span className="inline-flex items-center gap-2"><IngredientIcon name={item.ingredient.name} size={16} />{item.ingredient.name}</span></Td><Td>{qty} {item.ingredient.unit}</Td><Td className={low ? "font-bold text-red-700" : "text-teal-700"}>{low ? "Bajo/negativo" : "OK"}</Td></tr>;
                   })}
                 </tbody>
               </Table>
@@ -82,7 +83,7 @@ export default async function InventoryPage() {
                     <tr key={move.id}>
                       <Td>{move.createdAt.toLocaleString("es-GT")}</Td>
                       <Td>{inventoryMovementTypeLabel(move.type)}</Td>
-                      <Td>{move.ingredient.name}</Td>
+                      <Td><span className="inline-flex items-center gap-2"><IngredientIcon name={move.ingredient.name} size={16} />{move.ingredient.name}</span></Td>
                       <Td>{toNumber(move.quantityDelta)}</Td>
                       <Td>{move.reason}</Td>
                       <Td>

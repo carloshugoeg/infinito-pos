@@ -1,4 +1,5 @@
 import { UserRole } from "@prisma/client";
+import { IngredientIcon } from "@/components/icons/ingredient-icon";
 import { AppShell } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -220,7 +221,9 @@ function RecipeList({
       <strong>{ownerLabel}</strong>
       {items.length === 0 ? <span className="text-[var(--muted-foreground)]">Sin receta</span> : null}
       {items.map((item) => (
-        <form key={item.id} action={updateRecipeItemAction} className="grid gap-2 rounded-2xl border border-[var(--border)] bg-white p-2 sm:grid-cols-[1fr_0.5fr_auto_auto]">
+        <div key={item.id} className="flex items-center gap-2">
+        <IngredientIcon name={item.ingredient.name} size={18} />
+        <form action={updateRecipeItemAction} className="grid flex-1 gap-2 rounded-2xl border border-[var(--border)] bg-white p-2 sm:grid-cols-[1fr_0.5fr_auto_auto]">
           <input type="hidden" name="id" value={item.id} />
           <select name="ingredientId" defaultValue={item.ingredientId} className="touch-target w-full rounded-md border border-[var(--border)] bg-white px-3">
             {ingredients.map((ingredient) => <option value={ingredient.id} key={ingredient.id}>{ingredient.name} ({ingredient.unit})</option>)}
@@ -229,6 +232,7 @@ function RecipeList({
           <Button type="submit" variant="secondary" size="sm">Guardar</Button>
           <Button formAction={removeRecipeItemAction} type="submit" variant="danger" size="sm">Quitar</Button>
         </form>
+        </div>
       ))}
     </div>
   );

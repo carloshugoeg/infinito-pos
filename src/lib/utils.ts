@@ -12,6 +12,14 @@ export function formatCurrency(value: number | string) {
   }).format(Number(value));
 }
 
+export function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
+}
+
 export function toNumber(value: unknown) {
   if (typeof value === "number") return value;
   if (typeof value === "string") return Number(value);
