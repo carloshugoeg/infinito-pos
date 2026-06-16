@@ -32,7 +32,7 @@ export type CartItemInput = {
 };
 
 export type PaymentInput = {
-  method: "CASH" | "CARD" | "TRANSFER";
+  method: "CASH" | "CARD" | "TRANSFER" | "DELIVERY";
   amount: number;
   receivedAmount?: number;
   reference?: string;
@@ -225,7 +225,7 @@ function isValidMoney(value: unknown): value is number {
 }
 
 function isValidPaymentMethod(value: unknown): value is PaymentInput["method"] {
-  return value === "CASH" || value === "CARD" || value === "TRANSFER";
+  return value === "CASH" || value === "CARD" || value === "TRANSFER" || value === "DELIVERY";
 }
 
 function hasMoneyPrecision(value: number) {

@@ -5,7 +5,7 @@ describe("finance domain", () => {
   it("calcula utilidad bruta, neta, margenes y ticket promedio", () => {
     const pnl = computeProfitAndLoss({
       revenue: 1000,
-      revenueByMethod: { cash: 600, card: 300, transfer: 100 },
+      revenueByMethod: { cash: 600, card: 300, transfer: 100, delivery: 0 },
       cogs: 400,
       expensesByCategory: { LOCAL: 200, SERVICIOS: 100 },
       orderCount: 50
@@ -23,7 +23,7 @@ describe("finance domain", () => {
   it("evita divisiones por cero cuando no hay ingresos", () => {
     const pnl = computeProfitAndLoss({
       revenue: 0,
-      revenueByMethod: { cash: 0, card: 0, transfer: 0 },
+      revenueByMethod: { cash: 0, card: 0, transfer: 0, delivery: 0 },
       cogs: 0,
       expensesByCategory: {},
       orderCount: 0
@@ -39,7 +39,7 @@ describe("finance domain", () => {
   it("la utilidad neta puede ser negativa", () => {
     const pnl = computeProfitAndLoss({
       revenue: 500,
-      revenueByMethod: { cash: 500, card: 0, transfer: 0 },
+      revenueByMethod: { cash: 500, card: 0, transfer: 0, delivery: 0 },
       cogs: 300,
       expensesByCategory: { PERSONAL: 400 },
       orderCount: 10

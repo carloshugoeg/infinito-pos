@@ -68,11 +68,12 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           </form>
         </CardContent>
       </Card>
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
         <Metric title="Ventas" value={formatCurrency(total)} />
         <Metric title="Ordenes" value={String(orders.length)} />
         <Metric title="Efectivo" value={formatCurrency(byMethod(PaymentMethod.CASH))} />
         <Metric title="Tarjeta + transf." value={formatCurrency(byMethod(PaymentMethod.CARD) + byMethod(PaymentMethod.TRANSFER))} />
+        <Metric title="Delivery" value={formatCurrency(byMethod(PaymentMethod.DELIVERY))} />
       </div>
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Card>
@@ -112,27 +113,31 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                     <Th>Efectivo</Th>
                     <Th>Tarjeta</Th>
                     <Th>Transfer.</Th>
+                    <Th>Delivery</Th>
                     <Th>Total</Th>
                     <Th>Unitario</Th>
                     <Th>Total efectivo</Th>
                     <Th>Total tarjeta</Th>
                     <Th>Total transfer.</Th>
+                    <Th>Total delivery</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {section.rows.map((row) => {
-                    const totalCount = row.cashCount + row.cardCount + row.transferCount;
+                    const totalCount = row.cashCount + row.cardCount + row.transferCount + row.deliveryCount;
                     return (
                       <tr key={`${section.title}-${row.label}`}>
                         <Td>{row.label}</Td>
                         <Td>{row.cashCount}</Td>
                         <Td>{row.cardCount}</Td>
                         <Td>{row.transferCount}</Td>
+                        <Td>{row.deliveryCount}</Td>
                         <Td>{totalCount}</Td>
                         <Td>{formatCurrency(row.unitPrice)}</Td>
                         <Td>{formatCurrency(row.cashCount * row.unitPrice)}</Td>
                         <Td>{formatCurrency(row.cardCount * row.unitPrice)}</Td>
                         <Td>{formatCurrency(row.transferCount * row.unitPrice)}</Td>
+                        <Td>{formatCurrency(row.deliveryCount * row.unitPrice)}</Td>
                       </tr>
                     );
                   })}
@@ -140,10 +145,11 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
               </Table>
             </div>
           ))}
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <Metric title="Total ingresos efectivo" value={formatCurrency(empiricalReport.paymentTotals.cash)} />
             <Metric title="Total ingresos tarjeta" value={formatCurrency(empiricalReport.paymentTotals.card)} />
             <Metric title="Total ingresos transferencia" value={formatCurrency(empiricalReport.paymentTotals.transfer)} />
+            <Metric title="Total ingresos delivery" value={formatCurrency(empiricalReport.paymentTotals.delivery)} />
           </div>
         </CardContent>
       </Card>

@@ -17,7 +17,7 @@ export type DailySummary = {
   netProfit: number;
   orderCount: number;
   averageTicket: number;
-  revenueByMethod: { cash: number; card: number; transfer: number };
+  revenueByMethod: { cash: number; card: number; transfer: number; delivery: number };
   topProducts: Array<{ name: string; quantity: number; revenue: number }>;
   lowStock: Array<{ name: string; quantity: number; unit: string }>;
   cash: { expected: number; counted: number; difference: number } | null;
@@ -91,6 +91,7 @@ export function renderDailySummaryHtml(summary: DailySummary): string {
     row("Efectivo", formatCurrency(summary.revenueByMethod.cash)) +
     row("Tarjeta", formatCurrency(summary.revenueByMethod.card)) +
     row("Transferencia", formatCurrency(summary.revenueByMethod.transfer)) +
+    row("Delivery", formatCurrency(summary.revenueByMethod.delivery)) +
     row("COGS", formatCurrency(summary.cogs)) +
     row("Utilidad bruta", formatCurrency(summary.grossProfit)) +
     row("Gastos", formatCurrency(summary.expenses)) +

@@ -67,6 +67,12 @@ describe("cart domain", () => {
     expect(validatePayments(85, [{ method: "CARD", amount: 45 }, { method: "CARD", amount: 40 }])).toContain("Usa un solo registro por metodo de pago.");
   });
 
+  it("acepta delivery como metodo que cubre el total sin vuelto", () => {
+    expect(validatePayments(85, [{ method: "DELIVERY", amount: 85, reference: "Pedidos Ya" }])).toEqual([]);
+    expect(calculateCashChange({ method: "DELIVERY", amount: 85 })).toBe(0);
+    expect(validatePayments(85, [{ method: "DELIVERY", amount: 80 }])).toContain("El monto pagado es menor al total.");
+  });
+
   it("no calcula vuelto si no hay efectivo aplicado", () => {
     expect(calculateCashChange({ method: "CASH", amount: 0, receivedAmount: 100 })).toBe(0);
     expect(calculateCashChange({ method: "CARD", amount: 100, receivedAmount: 100 })).toBe(0);

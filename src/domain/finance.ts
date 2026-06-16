@@ -4,6 +4,7 @@ export type RevenueByMethod = {
   cash: number;
   card: number;
   transfer: number;
+  delivery: number;
 };
 
 export type ProfitAndLossInput = {

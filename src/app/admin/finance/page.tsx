@@ -53,11 +53,12 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
         />
       </div>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-4">
+      <div className="mt-4 grid gap-4 md:grid-cols-3 xl:grid-cols-5">
         <Metric title="Ticket promedio" value={formatCurrency(pnl.averageTicket)} />
         <Metric title="Efectivo" value={formatCurrency(pnl.revenueByMethod.cash)} />
         <Metric title="Tarjeta" value={formatCurrency(pnl.revenueByMethod.card)} />
         <Metric title="Transferencia" value={formatCurrency(pnl.revenueByMethod.transfer)} />
+        <Metric title="Delivery" value={formatCurrency(pnl.revenueByMethod.delivery)} />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">

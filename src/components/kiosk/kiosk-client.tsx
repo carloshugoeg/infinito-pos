@@ -61,6 +61,8 @@ export function KioskClient({
   const [cashDraft, setCashDraft] = useState("");
   const [cardDraft, setCardDraft] = useState("");
   const [transferDraft, setTransferDraft] = useState("");
+  const [deliveryMode, setDeliveryMode] = useState(false);
+  const [deliveryPlatform, setDeliveryPlatform] = useState("Pedidos Ya");
   const [customerNit, setCustomerNit] = useState("CF");
   const [customerName, setCustomerName] = useState("Consumidor Final");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -104,6 +106,8 @@ export function KioskClient({
     setCashDraft("");
     setCardDraft("");
     setTransferDraft("");
+    setDeliveryMode(false);
+    setDeliveryPlatform("Pedidos Ya");
     setCustomerNit("CF");
     setCustomerName("Consumidor Final");
     setCustomerPhone("");
@@ -149,10 +153,14 @@ export function KioskClient({
     setEditingCartItemId(item.localId);
   }
 
-  const paymentPayload: Array<{ method: "CASH" | "CARD" | "TRANSFER"; amount: number; receivedAmount?: number }> = [];
-  if (cashPayment.amount > 0 || cashPayment.receivedAmount > 0) paymentPayload.push({ method: "CASH", ...cashPayment });
-  if (cardAmount > 0) paymentPayload.push({ method: "CARD", amount: cardAmount });
-  if (transferAmount > 0) paymentPayload.push({ method: "TRANSFER", amount: transferAmount });
+  const paymentPayload: Array<{ method: "CASH" | "CARD" | "TRANSFER" | "DELIVERY"; amount: number; receivedAmount?: number; reference?: string }> = [];
+  if (deliveryMode) {
+    if (totals.total > 0) paymentPayload.push({ method: "DELIVERY", amount: totals.total, reference: deliveryPlatform.trim() || "Pedidos Ya" });
+  } else {
+    if (cashPayment.amount > 0 || cashPayment.receivedAmount > 0) paymentPayload.push({ method: "CASH", ...cashPayment });
+    if (cardAmount > 0) paymentPayload.push({ method: "CARD", amount: cardAmount });
+    if (transferAmount > 0) paymentPayload.push({ method: "TRANSFER", amount: transferAmount });
+  }
   const checkoutErrors = validateCheckout({ itemCount: cart.length, total: totals.total, payments: paymentPayload });
 
   return (
@@ -441,59 +449,94 @@ export function KioskClient({
                 </div>
 
                 <div className="space-y-4 pt-2 border-t border-[var(--border)]">
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] text-center block">Efectivo</Label>
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        name="cashAmount"
-                        value={cashDraft}
-                        className="rounded-xl border-none bg-white text-center font-bold"
-                        placeholder="0.00"
-                        onBlur={() => {
-                          setCashDraft(normalizeMoneyDraft(cashDraft));
-                        }}
-                        onChange={(event) => setCashDraft(sanitizeMoneyDraft(event.target.value))}
-                      />
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMode((value) => !value)}
+                    aria-pressed={deliveryMode}
+                    className={`flex w-full touch-target items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition-colors ${
+                      deliveryMode ? "border-[var(--accent)] bg-[var(--soft-mint)]" : "border-transparent bg-white"
+                    }`}
+                  >
+                    <span>
+                      <span className="block text-sm font-bold text-[var(--foreground)]">Pedido por delivery</span>
+                      <span className="block text-xs font-medium text-[var(--muted-foreground)]">Pedidos Ya u otra plataforma</span>
+                    </span>
+                    <span className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${deliveryMode ? "bg-[var(--primary)]" : "bg-[var(--border)]"}`}>
+                      <span className={`absolute top-0.5 left-0.5 size-6 rounded-full bg-white shadow transition-transform ${deliveryMode ? "translate-x-5" : ""}`} />
+                    </span>
+                  </button>
+
+                  {deliveryMode ? (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] ml-1">Plataforma</Label>
+                        <Input
+                          value={deliveryPlatform}
+                          maxLength={40}
+                          placeholder="Pedidos Ya"
+                          className="rounded-xl border-none bg-white font-bold"
+                          onChange={(event) => setDeliveryPlatform(event.target.value)}
+                        />
+                      </div>
+                      <p className="rounded-2xl bg-[var(--soft-mint)] px-4 py-3 text-xs font-semibold text-[var(--foreground)]">
+                        El total {formatCurrency(totals.total)} se registra como Delivery. No entra al efectivo de la caja: la plataforma liquida en su propio horario.
+                      </p>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] text-center block">Tarjeta</Label>
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        name="cardAmount"
-                        value={cardDraft}
-                        className="rounded-xl border-none bg-white text-center font-bold"
-                        placeholder="0.00"
-                        onBlur={() => {
-                          setCardDraft(normalizeMoneyDraft(cardDraft));
-                        }}
-                        onChange={(event) => setCardDraft(sanitizeMoneyDraft(event.target.value))}
-                      />
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] text-center block">Efectivo</Label>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          name="cashAmount"
+                          value={cashDraft}
+                          className="rounded-xl border-none bg-white text-center font-bold"
+                          placeholder="0.00"
+                          onBlur={() => {
+                            setCashDraft(normalizeMoneyDraft(cashDraft));
+                          }}
+                          onChange={(event) => setCashDraft(sanitizeMoneyDraft(event.target.value))}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] text-center block">Tarjeta</Label>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          name="cardAmount"
+                          value={cardDraft}
+                          className="rounded-xl border-none bg-white text-center font-bold"
+                          placeholder="0.00"
+                          onBlur={() => {
+                            setCardDraft(normalizeMoneyDraft(cardDraft));
+                          }}
+                          onChange={(event) => setCardDraft(sanitizeMoneyDraft(event.target.value))}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] text-center block">Transfer.</Label>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          name="transferAmount"
+                          value={transferDraft}
+                          className="rounded-xl border-none bg-white text-center font-bold"
+                          placeholder="0.00"
+                          onBlur={() => {
+                            setTransferDraft(normalizeMoneyDraft(transferDraft));
+                          }}
+                          onChange={(event) => setTransferDraft(sanitizeMoneyDraft(event.target.value))}
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] text-center block">Transfer.</Label>
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        name="transferAmount"
-                        value={transferDraft}
-                        className="rounded-xl border-none bg-white text-center font-bold"
-                        placeholder="0.00"
-                        onBlur={() => {
-                          setTransferDraft(normalizeMoneyDraft(transferDraft));
-                        }}
-                        onChange={(event) => setTransferDraft(sanitizeMoneyDraft(event.target.value))}
-                      />
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between p-4 rounded-2xl bg-[var(--soft-mint)] border border-[var(--accent)]/20">
                   <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Cambio</div>
-                    <div className="text-2xl font-black text-[var(--foreground)]">{formatCurrency(change)}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">{deliveryMode ? "Total delivery" : "Cambio"}</div>
+                    <div className="text-2xl font-black text-[var(--foreground)]">{formatCurrency(deliveryMode ? totals.total : change)}</div>
                   </div>
                   <CheckoutSubmitButton
                     disabled={cart.length === 0 || totals.total <= 0}

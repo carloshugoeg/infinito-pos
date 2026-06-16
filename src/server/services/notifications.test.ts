@@ -15,7 +15,7 @@ const finance: FinanceReport = {
     netMarginPct: 35,
     orderCount: 40,
     averageTicket: 25,
-    revenueByMethod: { cash: 700, card: 200, transfer: 100 }
+    revenueByMethod: { cash: 700, card: 200, transfer: 100, delivery: 150 }
   },
   productProfitability: [
     { productName: "Vaso Oreo", quantity: 20, revenue: 600, cost: 240, grossProfit: 360, marginPct: 60 },
@@ -43,7 +43,7 @@ describe("daily summary assembly", () => {
     expect(summary.netProfit).toBe(350);
     expect(summary.orderCount).toBe(40);
     expect(summary.averageTicket).toBe(25);
-    expect(summary.revenueByMethod).toEqual({ cash: 700, card: 200, transfer: 100 });
+    expect(summary.revenueByMethod).toEqual({ cash: 700, card: 200, transfer: 100, delivery: 150 });
     expect(summary.topProducts).toHaveLength(3);
     expect(summary.topProducts[0]).toEqual({ name: "Vaso Oreo", quantity: 20, revenue: 600 });
     expect(summary.lowStock).toEqual([{ name: "Fresa", quantity: -2, unit: "g" }]);
@@ -82,6 +82,7 @@ describe("daily summary html", () => {
     expect(html).toContain("Sucursal Centro");
     expect(html).toContain("07/06/2026");
     expect(html).toContain("Utilidad neta");
+    expect(html).toContain("Delivery");
     expect(html).toContain("Vaso Oreo");
     expect(html).toContain("Fresa");
     expect(html.startsWith("<")).toBe(true);

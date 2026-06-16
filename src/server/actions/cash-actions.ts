@@ -105,7 +105,8 @@ export async function calculateCashSessionBreakdown(cashSessionId: string) {
   return {
     cash: toNumber(payments.find((item) => item.method === PaymentMethod.CASH)?._sum.amount),
     card: toNumber(payments.find((item) => item.method === PaymentMethod.CARD)?._sum.amount),
-    transfer: toNumber(payments.find((item) => item.method === PaymentMethod.TRANSFER)?._sum.amount)
+    transfer: toNumber(payments.find((item) => item.method === PaymentMethod.TRANSFER)?._sum.amount),
+    delivery: toNumber(payments.find((item) => item.method === PaymentMethod.DELIVERY)?._sum.amount)
   };
 }
 

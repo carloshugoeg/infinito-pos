@@ -62,7 +62,8 @@ export async function getFinanceReport(
   const revenueByMethod = {
     cash: byMethod(PaymentMethod.CASH),
     card: byMethod(PaymentMethod.CARD),
-    transfer: byMethod(PaymentMethod.TRANSFER)
+    transfer: byMethod(PaymentMethod.TRANSFER),
+    delivery: byMethod(PaymentMethod.DELIVERY)
   };
 
   const realExpenses = expenses.map((expense) => ({ category: expense.category as string, amount: toNumber(expense.amount) }));

@@ -29,6 +29,7 @@ enum PaymentMethod {
   CASH
   CARD
   TRANSFER
+  DELIVERY
 }
 
 enum InventoryMovementType {

@@ -8,6 +8,7 @@ export type EmpiricalDailyRow = {
   cashCount: number;
   cardCount: number;
   transferCount: number;
+  deliveryCount: number;
 };
 
 export type EmpiricalDailySection = {
@@ -95,7 +96,7 @@ export async function getEmpiricalDailyReport(branchId: string, date = new Date(
 
   const reportSections: EmpiricalDailySection[] = sections.map((section) => ({
     title: section.title,
-    rows: section.rows.map((row) => ({ label: row.label, unitPrice: row.unitPrice, cashCount: 0, cardCount: 0, transferCount: 0 }))
+    rows: section.rows.map((row) => ({ label: row.label, unitPrice: row.unitPrice, cashCount: 0, cardCount: 0, transferCount: 0, deliveryCount: 0 }))
   }));
 
   for (const order of orders) {
@@ -107,6 +108,7 @@ export async function getEmpiricalDailyReport(branchId: string, date = new Date(
         if (method === PaymentMethod.CASH) match.cashCount += item.quantity;
         if (method === PaymentMethod.CARD) match.cardCount += item.quantity;
         if (method === PaymentMethod.TRANSFER) match.transferCount += item.quantity;
+        if (method === PaymentMethod.DELIVERY) match.deliveryCount += item.quantity;
       }
     }
   }
@@ -114,13 +116,15 @@ export async function getEmpiricalDailyReport(branchId: string, date = new Date(
   const paymentTotals = {
     cash: 0,
     card: 0,
-    transfer: 0
+    transfer: 0,
+    delivery: 0
   };
   for (const order of orders) {
     for (const payment of order.payments) {
       if (payment.method === PaymentMethod.CASH) paymentTotals.cash += toNumber(payment.amount);
       if (payment.method === PaymentMethod.CARD) paymentTotals.card += toNumber(payment.amount);
       if (payment.method === PaymentMethod.TRANSFER) paymentTotals.transfer += toNumber(payment.amount);
+      if (payment.method === PaymentMethod.DELIVERY) paymentTotals.delivery += toNumber(payment.amount);
     }
   }
 

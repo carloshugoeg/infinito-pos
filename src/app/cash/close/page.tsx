@@ -27,6 +27,7 @@ export default async function CloseCashPage() {
             <div className="flex justify-between"><span>Efectivo vendido</span><strong>{formatCurrency(breakdown.cash)}</strong></div>
             <div className="flex justify-between"><span>Tarjeta</span><strong>{formatCurrency(breakdown.card)}</strong></div>
             <div className="flex justify-between"><span>Transferencia</span><strong>{formatCurrency(breakdown.transfer)}</strong></div>
+            <div className="flex justify-between"><span>Delivery <span className="text-xs font-medium text-[var(--muted-foreground)]">(no entra a caja)</span></span><strong>{formatCurrency(breakdown.delivery)}</strong></div>
             <div className="flex justify-between border-t border-[var(--border)] pt-2 text-base"><span>Efectivo esperado</span><strong>{formatCurrency(expected)}</strong></div>
           </CardContent>
         </Card>

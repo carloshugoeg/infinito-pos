@@ -3,7 +3,8 @@ import { ExpenseCategory, ExpenseFrequency, InventoryMovementType, PaymentMethod
 const paymentMethodLabels: Record<PaymentMethod, string> = {
   [PaymentMethod.CASH]: "Efectivo",
   [PaymentMethod.CARD]: "Tarjeta",
-  [PaymentMethod.TRANSFER]: "Transferencia"
+  [PaymentMethod.TRANSFER]: "Transferencia",
+  [PaymentMethod.DELIVERY]: "Delivery"
 };
 
 const inventoryMovementTypeLabels: Record<InventoryMovementType, string> = {
