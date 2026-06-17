@@ -197,7 +197,7 @@ test.describe("Auditoría — Reportes", () => {
     await page.goto("/admin/reports");
     await expect(page.getByText("Ventas")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Productos mas vendidos" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Corte diario estilo Excel" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Corte diario" })).toBeVisible();
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),

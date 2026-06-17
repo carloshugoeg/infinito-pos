@@ -97,7 +97,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
       </div>
       <Card className="mt-4">
         <CardHeader>
-          <CardTitle>Corte diario estilo Excel</CardTitle>
+          <CardTitle>Corte diario</CardTitle>
           <p className="text-sm text-[var(--muted-foreground)]">
             Lectura compatible con el archivo actual: conteos por efectivo, tarjeta y transferencia. Si una orden tiene pagos divididos, los conteos se asignan al metodo con mayor monto.
           </p>
