@@ -164,7 +164,7 @@ export function KioskClient({
   const checkoutErrors = validateCheckout({ itemCount: cart.length, total: totals.total, payments: paymentPayload });
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
+    <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(300px,340px)] lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
       <section className="flex flex-col gap-6">
         <div className="overflow-hidden rounded-[2rem] border border-[var(--border)] bg-white px-6 py-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -189,7 +189,7 @@ export function KioskClient({
               {products.length} productos
             </span>
           </CardHeader>
-          <CardContent className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {products.map((product) => {
               const active = selectedProduct?.id === product.id;
               return (
@@ -200,12 +200,12 @@ export function KioskClient({
                     setSelectedProductId(product.id);
                     resetBuilder();
                   }}
-                  className={`group min-h-32 rounded-[2rem] border p-6 text-left transition-all duration-200 ${active
+                  className={`group aspect-square rounded-[2rem] border p-5 text-left transition-all duration-200 ${active
                       ? "selected-item border-transparent scale-[1.02]"
                       : "border-[var(--border)] bg-white hover:border-[var(--primary)] hover:shadow-md"
                     }`}
                 >
-                  <div className="flex h-full flex-col justify-between gap-5">
+                  <div className="flex h-full flex-col justify-between gap-3">
                     <div>
                       <div className="mb-3 flex items-center gap-2">
                         <span className={`grid size-12 place-items-center rounded-2xl font-display text-xl font-black transition ${active ? "bg-white/20 text-white" : "bg-[var(--primary)]/10 text-[var(--primary)] group-hover:bg-[var(--primary)] group-hover:text-white"
@@ -385,7 +385,7 @@ export function KioskClient({
         </Card>
       </section>
 
-      <aside className="rounded-[2.5rem] border border-[var(--border)] bg-white/80 p-5 shadow-xl backdrop-blur-xl xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-auto">
+      <aside className="rounded-[2.5rem] border border-[var(--border)] bg-white/80 p-5 shadow-xl backdrop-blur-xl lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-auto">
         <div className="flex flex-col gap-6">
           <div>
             <div className="flex items-center justify-between mb-4">

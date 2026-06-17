@@ -38,6 +38,15 @@ export function AppSidebar({ companyName, userRole }: { companyName: string; use
   const showHamburger = !canHover;
   const visibleLinks = links.filter(([, , , audience]) => audience === "all" || userRole === UserRole.ADMIN);
 
+  // Hover devices keep the auto-expanding rail. Touch devices (tablets) turn the rail into a
+  // full-width overlay drawer that slides off-screen when closed, so the content uses the full
+  // horizontal width and the floating hamburger brings the sidebar back.
+  const asideStateClasses = canHover
+    ? isExpanded
+      ? "lg:w-64 lg:px-6"
+      : "lg:w-[5.5rem] lg:px-4 lg:items-center"
+    : `lg:w-64 lg:px-6 ${pinned ? "lg:translate-x-0" : "lg:-translate-x-[140%] lg:pointer-events-none"}`;
+
   return (
     <>
       {/* Tap-to-close backdrop for the tablet drawer */}
@@ -50,10 +59,20 @@ export function AppSidebar({ companyName, userRole }: { companyName: string; use
         />
       )}
 
+      {/* Floating launcher: brings the hidden sidebar back on touch tablets */}
+      {showHamburger && !pinned && (
+        <button
+          type="button"
+          aria-label="Abrir menu"
+          onClick={() => setPinned(true)}
+          className="fixed left-5 top-5 z-30 hidden size-12 place-items-center rounded-2xl border border-[var(--border)] bg-white/95 text-[var(--foreground)] shadow-lg backdrop-blur-xl transition-colors hover:text-[var(--primary)] active:bg-[var(--muted)] lg:grid"
+        >
+          <Menu size={22} />
+        </button>
+      )}
+
       <aside
-        className={`fixed inset-x-3 top-3 z-30 rounded-[2.5rem] border border-[var(--border)] bg-white/95 px-4 py-3 shadow-lg backdrop-blur-xl transition-all duration-300 overflow-hidden lg:inset-y-5 lg:left-5 lg:right-auto lg:flex lg:flex-col lg:py-8 ${
-          isExpanded ? "lg:w-64 lg:px-6" : "lg:w-[5.5rem] lg:px-4 lg:items-center"
-        }`}
+        className={`fixed inset-x-3 top-3 z-30 rounded-[2.5rem] border border-[var(--border)] bg-white/95 px-4 py-3 shadow-lg backdrop-blur-xl transition-all duration-300 overflow-hidden lg:inset-y-5 lg:left-5 lg:right-auto lg:flex lg:flex-col lg:py-8 ${asideStateClasses}`}
         onMouseEnter={canHover ? () => setHovered(true) : undefined}
         onMouseLeave={canHover ? () => setHovered(false) : undefined}
       >
