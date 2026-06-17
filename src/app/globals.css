@@ -108,7 +108,17 @@ a {
   padding-top: 12rem;
 }
 
+/* Touch tablets (lg+): sidebar is an overlay drawer, so content uses the full width.
+   The top band leaves room for the floating hamburger launcher. */
 @media (min-width: 1024px) {
+  .app-main {
+    padding-top: 5rem;
+    padding-left: 0;
+  }
+}
+
+/* Desktop (hover + fine pointer): the auto-expanding rail reserves space on the left. */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
   .app-main {
     padding-top: 0.5rem;
     padding-left: 7.5rem;
