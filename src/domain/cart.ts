@@ -16,6 +16,7 @@ export type CatalogModifierGroup = {
 export type CatalogProduct = {
   id: string;
   name: string;
+  category?: string | null;
   basePrice: number;
   modifierGroups: CatalogModifierGroup[];
 };
