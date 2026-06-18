@@ -29,12 +29,17 @@ test.describe("Smoke kiosko en tablet (768×1024)", () => {
     await page.goto("/kiosk");
     await expect(page.getByText("Caja abierta")).toBeVisible();
 
+    // "Crema" → "Fresas con Crema" (clásica): exige 1 topping gratis de cortesía.
     await page.getByRole("button", { name: "Crema" }).first().click();
-    await expect(page.getByRole("button", { name: "Agregar" })).toBeEnabled();
-    await page.getByRole("button", { name: "Agregar" }).click();
+    const agregar = page.getByRole("button", { name: "Agregar" });
+    if (!(await agregar.isEnabled())) {
+      await page.getByRole("button", { name: "Oreo", exact: true }).first().click();
+    }
+    await expect(agregar).toBeEnabled();
+    await agregar.click();
 
     const cash = page.locator('input[name="cashAmount"]');
-    await cash.fill("35");
+    await cash.fill("36");
     await cash.blur();
     await page.getByRole("button", { name: "COBRAR" }).click();
 
