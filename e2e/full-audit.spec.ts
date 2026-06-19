@@ -1,6 +1,7 @@
 /**
  * Auditoría E2E completa — cubre módulos admin no testeados en specs existentes.
- * Las ventas usan el catálogo real (producto "Crema", Q35). Los datos creados
+ * Las ventas usan el catálogo real (producto "Fresas con Crema", Q36, clásica
+ * que exige 1 topping gratis de cortesía). Los datos creados
  * llevan sufijo de timestamp; no modifican el catálogo sembrado.
  * Prerequisito de datos: `npm run db:seed && npm run db:seed:infinito`.
  */
@@ -24,6 +25,24 @@ async function cancelAllOrders(page: Page) {
     await btn.click();
     await page.waitForTimeout(250);
   }
+}
+
+/**
+ * Vende una "Fresas con Crema" (clásica, Q36) en efectivo: elige el topping
+ * gratis de cortesía obligatorio, agrega al carrito y cobra exacto.
+ */
+async function sellClasica(page: Page) {
+  await page.getByRole("button", { name: "Crema" }).first().click();
+  const agregar = page.getByRole("button", { name: "Agregar" });
+  if (!(await agregar.isEnabled())) {
+    await page.getByRole("button", { name: "Oreo", exact: true }).first().click();
+  }
+  await agregar.click();
+  const cash = page.locator('input[name="cashAmount"]');
+  await cash.fill("36");
+  await cash.blur();
+  await page.getByRole("button", { name: "COBRAR" }).click();
+  await expect(page.getByText("El carrito esta vacio.")).toBeVisible({ timeout: 10_000 });
 }
 
 /** Read the "Efectivo vendido" amount from the open cash-close summary. */
@@ -186,13 +205,7 @@ test.describe("Auditoría — Reportes", () => {
 
   test("venta genera datos en reportes y CSV descargable", async ({ page }) => {
     await page.goto("/kiosk");
-    await page.getByRole("button", { name: "Crema" }).first().click();
-    await page.getByRole("button", { name: "Agregar" }).click();
-    const cash = page.locator('input[name="cashAmount"]');
-    await cash.fill("35");
-    await cash.blur();
-    await page.getByRole("button", { name: "COBRAR" }).click();
-    await expect(page.getByText("El carrito esta vacio.")).toBeVisible({ timeout: 10_000 });
+    await sellClasica(page);
 
     await page.goto("/admin/reports");
     await expect(page.getByText("Ventas")).toBeVisible();
@@ -279,13 +292,7 @@ test.describe("Auditoría — Ciclo de preparación (estados actuales)", () => {
   });
 
   test("Pendiente → Preparar → Preparando → Entregar → desaparece", async ({ page }) => {
-    await page.getByRole("button", { name: "Crema" }).first().click();
-    await page.getByRole("button", { name: "Agregar" }).click();
-    const cash = page.locator('input[name="cashAmount"]');
-    await cash.fill("35");
-    await cash.blur();
-    await page.getByRole("button", { name: "COBRAR" }).click();
-    await expect(page.getByText("El carrito esta vacio.")).toBeVisible({ timeout: 10_000 });
+    await sellClasica(page);
 
     const card = page.locator(".rounded-3xl.border").first();
     await expect(card.getByText("Pendiente")).toBeVisible();
@@ -306,15 +313,9 @@ test.describe("Auditoría — Caja con ventas", () => {
     const before = await readCashSold(page);
 
     await page.goto("/kiosk");
-    await page.getByRole("button", { name: "Crema" }).first().click();
-    await page.getByRole("button", { name: "Agregar" }).click();
-    const cash = page.locator('input[name="cashAmount"]');
-    await cash.fill("35");
-    await cash.blur();
-    await page.getByRole("button", { name: "COBRAR" }).click();
-    await expect(page.getByText("El carrito esta vacio.")).toBeVisible({ timeout: 10_000 });
+    await sellClasica(page);
 
     const after = await readCashSold(page);
-    expect(after - before).toBeCloseTo(35, 2);
+    expect(after - before).toBeCloseTo(36, 2);
   });
 });

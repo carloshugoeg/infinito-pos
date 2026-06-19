@@ -26,12 +26,17 @@ async function cancelAllOrders(page: Page) {
   }
 }
 
-/** Vende una Crema (Q35) en efectivo y espera a que el carrito quede vacío. */
+/** Vende una Fresas con Crema (Q36) en efectivo y espera a que el carrito quede vacío. */
 async function sellCrema(page: Page) {
+  // "Crema" resuelve a "Fresas con Crema" (clásica): exige 1 topping gratis de cortesía.
   await page.getByRole("button", { name: "Crema" }).first().click();
-  await page.getByRole("button", { name: "Agregar" }).click();
+  const agregar = page.getByRole("button", { name: "Agregar" });
+  if (!(await agregar.isEnabled())) {
+    await page.getByRole("button", { name: "Oreo", exact: true }).first().click();
+  }
+  await agregar.click();
   const cash = page.locator('input[name="cashAmount"]');
-  await cash.fill("35");
+  await cash.fill("36");
   await cash.blur();
   await page.getByRole("button", { name: "COBRAR" }).click();
   await expect(page.getByText("El carrito esta vacio.")).toBeVisible({ timeout: 10_000 });

@@ -28,6 +28,18 @@ async function cancelAllOrders(page: Page) {
   }
 }
 
+/**
+ * Abre el builder de "Fresas con Crema" (clásica) y satisface el topping gratis
+ * de cortesía obligatorio para que "Agregar" quede habilitado.
+ */
+async function pickClasica(page: Page) {
+  await page.getByRole("button", { name: "Crema" }).first().click();
+  const agregar = page.getByRole("button", { name: "Agregar" });
+  if (!(await agregar.isEnabled())) {
+    await page.getByRole("button", { name: "Oreo", exact: true }).first().click();
+  }
+}
+
 // ─── Suite ─────────────────────────────────────────────────────────────────────
 
 test.describe("Fool-Proofing y Edge Cases", () => {
@@ -45,10 +57,10 @@ test.describe("Fool-Proofing y Edge Cases", () => {
   });
 
   test("COBRAR con pago insuficiente muestra alerta de validación sin enviar pedido", async ({ page }) => {
-    await page.getByRole("button", { name: "Crema" }).first().click();
+    await pickClasica(page);
     await page.getByRole("button", { name: "Agregar" }).click();
 
-    // Pay only Q10 for a Q25 item
+    // Pay only Q10 for a Q36 item
     const input = page.locator('input[name="cashAmount"]');
     await input.fill("10");
     await input.blur();
@@ -68,7 +80,7 @@ test.describe("Fool-Proofing y Edge Cases", () => {
   });
 
   test("COBRAR sin ningún pago muestra alerta de validación", async ({ page }) => {
-    await page.getByRole("button", { name: "Crema" }).first().click();
+    await pickClasica(page);
     await page.getByRole("button", { name: "Agregar" }).click();
 
     // All payment inputs at 0 — nothing entered
@@ -85,11 +97,11 @@ test.describe("Fool-Proofing y Edge Cases", () => {
   });
 
   test("COBRAR no hace doble submit — carrito limpio sin pedidos duplicados", async ({ page }) => {
-    await page.getByRole("button", { name: "Crema" }).first().click();
+    await pickClasica(page);
     await page.getByRole("button", { name: "Agregar" }).click();
 
     const input = page.locator('input[name="cashAmount"]');
-    await input.fill("35");
+    await input.fill("36");
     await input.blur();
 
     const cobrarBtn = page.getByRole("button", { name: "COBRAR" });
@@ -199,7 +211,7 @@ test.describe("Fool-Proofing y Edge Cases", () => {
   // ── Cancelar edición ─────────────────────────────────────────────────────
 
   test("cancelar edición no modifica el carrito ni el total", async ({ page }) => {
-    await page.getByRole("button", { name: "Crema" }).first().click();
+    await pickClasica(page);
     await page.getByRole("button", { name: "Agregar" }).click();
 
     const originalTotal = await page.getByTestId("cart-total").textContent();

@@ -148,3 +148,60 @@ describe("cart domain", () => {
     expect(buildSaleSuccessPath("order 123")).toBe("/kiosk?ok=venta&order=order%20123");
   });
 });
+
+// Modela el menu del instructivo: una Fresa Clasica con topping de cortesia
+// obligatorio (gratis, max 1) y la lista global de extras fusionada por la query.
+const clasicaConExtras: CatalogProduct = {
+  id: "fresas-crema",
+  name: "Fresas con Crema",
+  category: "Fresas Clasicas",
+  basePrice: 36,
+  modifierGroups: [
+    {
+      id: "cortesia",
+      name: "Topping de cortesia",
+      isRequired: true,
+      minSelections: 1,
+      maxSelections: 1,
+      modifiers: [
+        { id: "cortesia-oreo", name: "Oreo", priceDelta: 0 },
+        { id: "cortesia-lotus", name: "Lotus", priceDelta: 0 }
+      ]
+    },
+    {
+      // Grupo global fusionado por listSellableProducts(): mismos extras en todos los productos.
+      id: "extras",
+      name: "Extras",
+      isRequired: false,
+      minSelections: 0,
+      maxSelections: 14,
+      modifiers: [
+        { id: "extra-oreo", name: "Extra Oreo", priceDelta: 6 },
+        { id: "extra-choco-leche", name: "Extra Chocolate con Leche", priceDelta: 20 }
+      ]
+    }
+  ]
+};
+
+describe("logica de menu (instructivo)", () => {
+  it("obliga a elegir el topping gratis de cortesia en las clasicas", () => {
+    expect(validateModifierSelections(clasicaConExtras, [])).toContain("Selecciona Topping de cortesia.");
+    expect(validateModifierSelections(clasicaConExtras, ["cortesia-oreo", "cortesia-lotus"])).toContain(
+      "Topping de cortesia permite maximo 1."
+    );
+    expect(validateModifierSelections(clasicaConExtras, ["cortesia-oreo"])).toEqual([]);
+  });
+
+  it("el topping de cortesia no suma al precio y los extras globales si", () => {
+    // Solo base + topping gratis = Q36.
+    expect(calculateCartItemTotal(clasicaConExtras, ["cortesia-oreo"], 1)).toBe(36);
+    // + Extra Oreo (+Q6) = Q42.
+    expect(calculateCartItemTotal(clasicaConExtras, ["cortesia-oreo", "extra-oreo"], 1)).toBe(42);
+    // + Extra Chocolate con Leche (+Q20) = Q62.
+    expect(calculateCartItemTotal(clasicaConExtras, ["cortesia-oreo", "extra-oreo", "extra-choco-leche"], 1)).toBe(62);
+  });
+
+  it("permite extras opcionales sin seleccionar ninguno (solo el topping requerido)", () => {
+    expect(validateModifierSelections(clasicaConExtras, ["cortesia-lotus"])).toEqual([]);
+  });
+});

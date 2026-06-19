@@ -70,6 +70,7 @@ export function KioskClient({
   const lastClearedSaleRef = useRef<string | null>(null);
 
   const selectedProduct = products.find((product) => product.id === selectedProductId) ?? products[0];
+  const productSections = groupProductsByCategory(products);
   const editingCartItem = cart.find((item) => item.localId === editingCartItemId) ?? null;
   const selectedErrors = selectedProduct ? validateModifierSelections(selectedProduct, selectedModifiers) : [];
   const pricedCart = cart.map((item) => {
@@ -189,37 +190,46 @@ export function KioskClient({
               {products.length} productos
             </span>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {products.map((product) => {
-              const active = selectedProduct?.id === product.id;
-              return (
-                <button
-                  key={product.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedProductId(product.id);
-                    resetBuilder();
-                  }}
-                  className={`group aspect-square rounded-[2rem] border p-5 text-left transition-all duration-200 ${active
-                      ? "selected-item border-transparent scale-[1.02]"
-                      : "border-[var(--border)] bg-white hover:border-[var(--primary)] hover:shadow-md"
-                    }`}
-                >
-                  <div className="flex h-full flex-col justify-between gap-3">
-                    <div>
-                      <div className="mb-3 flex items-center gap-2">
-                        <span className={`grid size-12 place-items-center rounded-2xl font-display text-xl font-black transition ${active ? "bg-white/20 text-white" : "bg-[var(--primary)]/10 text-[var(--primary)] group-hover:bg-[var(--primary)] group-hover:text-white"
-                          }`}>
-                          {product.name.slice(0, 1)}
-                        </span>
-                      </div>
-                      <div className="font-display text-xl font-black tracking-tight">{product.name}</div>
-                    </div>
-                    <div className={`text-sm font-bold ${active ? "text-white" : "text-[var(--primary)]"}`}>{formatCurrency(product.basePrice)}</div>
-                  </div>
-                </button>
-              );
-            })}
+          <CardContent className="space-y-8">
+            {productSections.map((section) => (
+              <div key={section.key} className="space-y-4">
+                {section.label ? (
+                  <h3 className="font-display text-lg font-black tracking-tight text-[var(--foreground)]">{section.label}</h3>
+                ) : null}
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {section.products.map((product) => {
+                    const active = selectedProduct?.id === product.id;
+                    return (
+                      <button
+                        key={product.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedProductId(product.id);
+                          resetBuilder();
+                        }}
+                        className={`group aspect-square rounded-[2rem] border p-5 text-left transition-all duration-200 ${active
+                            ? "selected-item border-transparent scale-[1.02]"
+                            : "border-[var(--border)] bg-white hover:border-[var(--primary)] hover:shadow-md"
+                          }`}
+                      >
+                        <div className="flex h-full flex-col justify-between gap-3">
+                          <div>
+                            <div className="mb-3 flex items-center gap-2">
+                              <span className={`grid size-12 place-items-center rounded-2xl font-display text-xl font-black transition ${active ? "bg-white/20 text-white" : "bg-[var(--primary)]/10 text-[var(--primary)] group-hover:bg-[var(--primary)] group-hover:text-white"
+                                }`}>
+                                {product.name.slice(0, 1)}
+                              </span>
+                            </div>
+                            <div className="font-display text-xl font-black tracking-tight">{product.name}</div>
+                          </div>
+                          <div className={`text-sm font-bold ${active ? "text-white" : "text-[var(--primary)]"}`}>{formatCurrency(product.basePrice)}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
 
@@ -564,6 +574,29 @@ function CheckoutSubmitButton({ disabled, onClick }: { disabled: boolean; onClic
       {pending ? "..." : "COBRAR"}
     </Button>
   );
+}
+
+// Agrupa el catalogo por categoria ("Fresas Clasicas" / "Fresas Gourmet"),
+// preservando el orden de aparicion. Si no hay categorias, devuelve una sola
+// seccion sin encabezado para mantener la grilla plana original.
+function groupProductsByCategory(products: CatalogProduct[]) {
+  const sections: Array<{ key: string; label: string | null; products: CatalogProduct[] }> = [];
+  const byKey = new Map<string, { key: string; label: string | null; products: CatalogProduct[] }>();
+  const hasCategory = products.some((product) => Boolean(product.category));
+
+  for (const product of products) {
+    const label = hasCategory ? product.category ?? "Otros" : null;
+    const key = label ?? "__all__";
+    let section = byKey.get(key);
+    if (!section) {
+      section = { key, label, products: [] };
+      byKey.set(key, section);
+      sections.push(section);
+    }
+    section.products.push(product);
+  }
+
+  return sections;
 }
 
 function modifierGridClass(count: number) {

@@ -124,11 +124,13 @@ export async function createProductAction(formData: FormData) {
     data: {
       name: normalizeFormText(formData.get("name")),
       description: normalizeFormText(formData.get("description")) || null,
+      category: normalizeFormText(formData.get("category")) || null,
       basePrice: parseNumberField(formData.get("basePrice"), "Precio base", { fallback: 0, min: 0, max: 999_999.99, decimals: 2 }),
       sortOrder: parseNumberField(formData.get("sortOrder"), "Orden", { fallback: 0, min: 0, max: 100_000, integer: true })
     }
   });
   revalidatePath("/admin/catalog");
+  revalidatePath("/kiosk");
 }
 
 export async function updateProductAction(formData: FormData) {
@@ -138,6 +140,7 @@ export async function updateProductAction(formData: FormData) {
     data: {
       name: normalizeFormText(formData.get("name")),
       description: normalizeFormText(formData.get("description")) || null,
+      category: normalizeFormText(formData.get("category")) || null,
       basePrice: parseNumberField(formData.get("basePrice"), "Precio base", { fallback: 0, min: 0, max: 999_999.99, decimals: 2 }),
       sortOrder: parseNumberField(formData.get("sortOrder"), "Orden", { fallback: 0, min: 0, max: 100_000, integer: true })
     }
@@ -184,9 +187,12 @@ export async function createModifierGroupAction(formData: FormData) {
     max: 99,
     integer: true
   });
+  // productId vacio => grupo global (lista de extras compartida por todos los productos).
+  const productId = normalizeFormText(formData.get("productId")) || null;
   await prisma.modifierGroup.create({
     data: {
-      productId: normalizeFormText(formData.get("productId")),
+      productId,
+      isGlobal: productId === null,
       name: normalizeFormText(formData.get("name")),
       isRequired,
       minSelections,
@@ -195,6 +201,7 @@ export async function createModifierGroupAction(formData: FormData) {
     }
   });
   revalidatePath("/admin/catalog");
+  revalidatePath("/kiosk");
 }
 
 export async function updateModifierGroupAction(formData: FormData) {
