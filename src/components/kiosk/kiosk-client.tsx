@@ -189,7 +189,7 @@ export function KioskClient({
               {products.length} productos
             </span>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <CardContent className="grid gap-4 grid-cols-2 landscape:grid-cols-3 xl:grid-cols-3">
             {products.map((product) => {
               const active = selectedProduct?.id === product.id;
               return (
