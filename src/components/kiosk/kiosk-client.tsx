@@ -196,7 +196,7 @@ export function KioskClient({
                 {section.label ? (
                   <h3 className="font-display text-lg font-black tracking-tight text-[var(--foreground)]">{section.label}</h3>
                 ) : null}
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-4 grid-cols-2 landscape:grid-cols-3 xl:grid-cols-3">
                   {section.products.map((product) => {
                     const active = selectedProduct?.id === product.id;
                     return (
