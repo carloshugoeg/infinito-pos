@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(find /mnt/c/Users/carlo/Documents/Proyectos/koi-pos -type f -name *.ts -o -name *.tsx -o -name *.js -o -name *.jsx -o -name *.json)"
+      "Bash(find /mnt/c/Users/carlo/Documents/Proyectos/koi-pos -type f -name *.ts -o -name *.tsx -o -name *.js -o -name *.jsx -o -name *.json)",
+      "mcp__40ce0e31-e227-44a5-82ef-71e1c36534c7__list_projects",
+      "mcp__40ce0e31-e227-44a5-82ef-71e1c36534c7__execute_sql"
     ]
   }
 }
