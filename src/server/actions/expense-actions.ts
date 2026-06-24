@@ -5,15 +5,17 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { isExpenseCategory, isExpenseFrequency, validateExpense } from "@/domain/expenses";
 import { getActiveBranch, requireRole } from "@/server/auth";
+import { guatemalaDayStart, guatemalaDayStartFromInput } from "@/lib/time";
 import { normalizeFormText, parseNumberField } from "@/server/admin-crud";
 
 function parseIncurredOn(value: FormDataEntryValue | null | undefined): Date {
   const raw = String(value ?? "").trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    const [year, month, day] = raw.split("-").map(Number);
-    return new Date(year, month - 1, day);
+    // El gasto es una fecha de calendario en Guatemala: se ancla a las 00:00 GT
+    // (06:00 UTC) para que caiga en el mismo día con que se filtran reportes/finanzas.
+    return guatemalaDayStartFromInput(raw);
   }
-  return new Date();
+  return guatemalaDayStart();
 }
 
 function parsePaymentMethod(value: FormDataEntryValue | null | undefined): PaymentMethod | null {

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { expandRecurringExpenses, sumExpensesByCategory, validateExpense } from "@/domain/expenses";
+import { guatemalaCalendarParts } from "@/lib/time";
+
+// Rangos anclados a 00:00 de Guatemala (06:00 UTC), igual que parseReportDateRange.
+const JUNE_2026 = { start: new Date("2026-06-01T06:00:00.000Z"), end: new Date("2026-07-01T06:00:00.000Z") };
+const FIRST_WEEK_JUNE_2026 = { start: new Date("2026-06-01T06:00:00.000Z"), end: new Date("2026-06-08T06:00:00.000Z") };
 
 describe("expenses domain", () => {
   it("acepta un gasto valido", () => {
@@ -38,36 +43,37 @@ describe("expenses domain", () => {
   it("expande un gasto recurrente mensual una vez en el mes", () => {
     const virtuals = expandRecurringExpenses(
       [{ id: "rent", category: "LOCAL", description: "Renta", amount: 3000, frequency: "MONTHLY", dayOfPeriod: 1 }],
-      { start: new Date(2026, 5, 1), end: new Date(2026, 6, 1) }
+      JUNE_2026
     );
     expect(virtuals).toHaveLength(1);
     expect(virtuals[0]).toMatchObject({ recurringId: "rent", category: "LOCAL", amount: 3000 });
-    expect(virtuals[0].incurredOn.getMonth()).toBe(5);
-    expect(virtuals[0].incurredOn.getDate()).toBe(1);
+    const parts = guatemalaCalendarParts(virtuals[0].incurredOn);
+    expect(parts.monthIndex).toBe(5);
+    expect(parts.day).toBe(1);
   });
 
   it("expande un gasto quincenal dos veces en el mes", () => {
     const virtuals = expandRecurringExpenses(
       [{ id: "pay", category: "PERSONAL", description: "Planilla", amount: 5000, frequency: "BIWEEKLY", dayOfPeriod: 15 }],
-      { start: new Date(2026, 5, 1), end: new Date(2026, 6, 1) }
+      JUNE_2026
     );
     expect(virtuals).toHaveLength(2);
-    expect(virtuals.map((item) => item.incurredOn.getDate())).toEqual([15, 30]);
+    expect(virtuals.map((item) => guatemalaCalendarParts(item.incurredOn).day)).toEqual([15, 30]);
   });
 
   it("expande un gasto semanal una vez por semana en su dia", () => {
     const virtuals = expandRecurringExpenses(
       [{ id: "clean", category: "SERVICIOS", description: "Limpieza", amount: 200, frequency: "WEEKLY", dayOfPeriod: 3 }],
-      { start: new Date(2026, 5, 1), end: new Date(2026, 5, 8) }
+      FIRST_WEEK_JUNE_2026
     );
     expect(virtuals).toHaveLength(1);
-    expect(virtuals[0].incurredOn.getDay()).toBe(3);
+    expect(guatemalaCalendarParts(virtuals[0].incurredOn).weekday).toBe(3);
   });
 
   it("ignora plantillas inactivas", () => {
     const virtuals = expandRecurringExpenses(
       [{ id: "old", category: "LOCAL", description: "Vieja", amount: 1, frequency: "MONTHLY", dayOfPeriod: 1, active: false }],
-      { start: new Date(2026, 5, 1), end: new Date(2026, 6, 1) }
+      JUNE_2026
     );
     expect(virtuals).toEqual([]);
   });

@@ -1,4 +1,5 @@
 import { roundMoney } from "@/domain/cart";
+import { GUATEMALA_DAY_MS, guatemalaCalendarParts, guatemalaDayStart } from "@/lib/time";
 
 export const EXPENSE_CATEGORIES = [
   "LOCAL",
@@ -82,22 +83,24 @@ function daysInMonth(year: number, monthIndex: number) {
 }
 
 function recurringFiresOn(template: RecurringExpenseTemplate, date: Date): boolean {
-  const dim = daysInMonth(date.getFullYear(), date.getMonth());
-  const dayOfMonth = date.getDate();
+  // El día de cobro se evalúa en el calendario de Guatemala, igual que los límites
+  // del rango (00:00 GT), para no adelantar/atrasar la ocurrencia en servidores UTC.
+  const { year, monthIndex, day, weekday } = guatemalaCalendarParts(date);
+  const dim = daysInMonth(year, monthIndex);
   switch (template.frequency) {
     case "MONTHLY": {
       const target = Math.min(Math.max(1, template.dayOfPeriod), dim);
-      return dayOfMonth === target;
+      return day === target;
     }
     case "BIWEEKLY": {
       // Quincenal: el dia indicado y ~15 dias despues (clamp al fin de mes).
       const first = Math.min(Math.max(1, template.dayOfPeriod), dim);
       const second = Math.min(first + 15, dim);
-      return dayOfMonth === first || dayOfMonth === second;
+      return day === first || day === second;
     }
     case "WEEKLY": {
       const targetDow = (((template.dayOfPeriod % 7) + 7) % 7);
-      return date.getDay() === targetDow;
+      return weekday === targetDow;
     }
     default:
       return false;
@@ -115,8 +118,10 @@ export function expandRecurringExpenses(
   const result: VirtualExpense[] = [];
   for (const template of templates) {
     if (template.active === false) continue;
-    const cursor = new Date(range.start);
-    cursor.setHours(0, 0, 0, 0);
+    // Se itera por días de Guatemala (cada inicio de día = 00:00 GT). Guatemala no
+    // observa horario de verano, así que avanzar 24h fijas mantiene el ancla.
+    let cursor = guatemalaDayStart(range.start);
+    if (cursor < range.start) cursor = new Date(cursor.getTime() + GUATEMALA_DAY_MS);
     while (cursor < range.end) {
       if (recurringFiresOn(template, cursor)) {
         result.push({
@@ -127,7 +132,7 @@ export function expandRecurringExpenses(
           incurredOn: new Date(cursor)
         });
       }
-      cursor.setDate(cursor.getDate() + 1);
+      cursor = new Date(cursor.getTime() + GUATEMALA_DAY_MS);
     }
   }
   return result;

@@ -9,6 +9,7 @@ import { prisma } from "@/lib/db";
 import { expenseCategoryLabel, expenseFrequencyLabel, paymentMethodLabel } from "@/lib/labels";
 import { formatCurrency, toNumber } from "@/lib/utils";
 import { EXPENSE_CATEGORIES, EXPENSE_FREQUENCIES, isExpenseCategory } from "@/domain/expenses";
+import { formatGuatemalaDate, guatemalaDateInput } from "@/lib/time";
 import { parseReportDateRange } from "@/server/admin-crud";
 import { getActiveBranch, requireRole } from "@/server/auth";
 import {
@@ -26,13 +27,6 @@ function readParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function dateInputValue(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 export default async function ExpensesPage({ searchParams }: ExpensesPageProps) {
   await requireRole([UserRole.ADMIN]);
   const { branch } = await getActiveBranch();
@@ -40,7 +34,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
   const range = parseReportDateRange(readParam(params.from), readParam(params.to));
   const categoryParam = readParam(params.category);
   const categoryFilter = isExpenseCategory(categoryParam) ? (categoryParam as ExpenseCategory) : undefined;
-  const today = dateInputValue(new Date());
+  const today = guatemalaDateInput();
 
   const [expenses, recurring] = await Promise.all([
     prisma.expense.findMany({
@@ -164,7 +158,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
                 <tbody>
                   {expenses.map((expense) => (
                     <tr key={expense.id}>
-                      <Td>{expense.incurredOn.toLocaleDateString("es-GT")}</Td>
+                      <Td>{formatGuatemalaDate(expense.incurredOn)}</Td>
                       <Td>{expenseCategoryLabel(expense.category)}</Td>
                       <Td>{expense.description}</Td>
                       <Td>{formatCurrency(toNumber(expense.amount))}</Td>

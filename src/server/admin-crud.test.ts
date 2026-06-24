@@ -32,17 +32,27 @@ describe("admin CRUD helpers", () => {
     expect(() => parseNumberField("1.5", "Orden", { integer: true })).toThrow("Orden debe ser un entero.");
   });
 
-  it("parses report dates as an inclusive day range", () => {
-    const range = parseReportDateRange("2026-05-05", "2026-05-06", new Date(2026, 4, 7, 15));
+  it("parses report dates as an inclusive day range anchored to Guatemala midnight", () => {
+    const range = parseReportDateRange("2026-05-05", "2026-05-06", new Date("2026-05-07T21:00:00.000Z"));
 
-    expect(range.start.getFullYear()).toBe(2026);
-    expect(range.start.getMonth()).toBe(4);
-    expect(range.start.getDate()).toBe(5);
-    expect(range.end.getFullYear()).toBe(2026);
-    expect(range.end.getMonth()).toBe(4);
-    expect(range.end.getDate()).toBe(7);
+    // 00:00 de Guatemala (UTC-6) === 06:00 UTC; el `end` es exclusivo (día siguiente).
+    expect(range.start.toISOString()).toBe("2026-05-05T06:00:00.000Z");
+    expect(range.end.toISOString()).toBe("2026-05-07T06:00:00.000Z");
     expect(range.startInput).toBe("2026-05-05");
     expect(range.endInput).toBe("2026-05-06");
+  });
+
+  it("usa el día de Guatemala para 'hoy' (el día no cambia a las 18:00)", () => {
+    // 01:30 UTC del 23-jun === 19:30 del 22-jun en Guatemala: sigue siendo el 22.
+    const evening = parseReportDateRange(null, null, new Date("2026-06-23T01:30:00.000Z"));
+    expect(evening.startInput).toBe("2026-06-22");
+    expect(evening.start.toISOString()).toBe("2026-06-22T06:00:00.000Z");
+    expect(evening.end.toISOString()).toBe("2026-06-23T06:00:00.000Z");
+
+    // 05:59 UTC === 23:59 del 22 en Guatemala: todavía el 22.
+    expect(parseReportDateRange(null, null, new Date("2026-06-23T05:59:00.000Z")).startInput).toBe("2026-06-22");
+    // 06:00 UTC === 00:00 del 23 en Guatemala: ya es el 23.
+    expect(parseReportDateRange(null, null, new Date("2026-06-23T06:00:00.000Z")).startInput).toBe("2026-06-23");
   });
 
   it("cuenta los dias cubiertos por un rango (end exclusivo)", () => {

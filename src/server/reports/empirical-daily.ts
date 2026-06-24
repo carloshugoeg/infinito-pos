@@ -1,5 +1,6 @@
 import { PaymentMethod } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { guatemalaDayRange } from "@/lib/time";
 import { toNumber } from "@/lib/utils";
 
 export type EmpiricalDailyRow = {
@@ -77,10 +78,7 @@ const sections: Array<{
 ];
 
 export async function getEmpiricalDailyReport(branchId: string, date = new Date()) {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  const { start, end } = guatemalaDayRange(date);
 
   const orders = await prisma.order.findMany({
     where: {

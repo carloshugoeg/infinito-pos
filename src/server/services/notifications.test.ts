@@ -28,7 +28,7 @@ describe("daily summary assembly", () => {
   it("arma el resumen del dia a partir del reporte financiero, stock y caja", () => {
     const summary = assembleDailySummary({
       branchName: "Sucursal Centro",
-      date: new Date(2026, 5, 7),
+      date: new Date("2026-06-07T12:00:00.000Z"),
       finance,
       lowStock: [{ name: "Fresa", quantity: -2, unit: "g" }],
       cash: { expected: 700, counted: 690, difference: -10 }
@@ -62,7 +62,7 @@ describe("daily summary assembly", () => {
         marginPct: 100
       }))
     };
-    const summary = assembleDailySummary({ branchName: "X", date: new Date(2026, 5, 7), finance: many, lowStock: [] });
+    const summary = assembleDailySummary({ branchName: "X", date: new Date("2026-06-07T12:00:00.000Z"), finance: many, lowStock: [] });
     expect(summary.topProducts).toHaveLength(5);
     expect(summary.cash).toBeNull();
   });
@@ -72,7 +72,7 @@ describe("daily summary html", () => {
   it("incluye los datos clave en el HTML", () => {
     const summary = assembleDailySummary({
       branchName: "Sucursal Centro",
-      date: new Date(2026, 5, 7),
+      date: new Date("2026-06-07T12:00:00.000Z"),
       finance,
       lowStock: [{ name: "Fresa", quantity: -2, unit: "g" }],
       cash: { expected: 700, counted: 690, difference: -10 }

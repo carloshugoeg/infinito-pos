@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { formatCurrency, toNumber } from "@/lib/utils";
 import { isLowOrNegativeStock } from "@/domain/inventory";
 import { getFinanceReport, type FinanceReport } from "@/server/reports/finance";
+import { formatGuatemalaDate, guatemalaDayRange, guatemalaDayStart } from "@/lib/time";
 
 const DAILY_SUMMARY_KIND = "daily_summary";
 const STUB_RECIPIENT = "daily-report@stub.local";
@@ -23,20 +24,6 @@ export type DailySummary = {
   cash: { expected: number; counted: number; difference: number } | null;
 };
 
-function formatEsDate(date: Date) {
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  return `${day}/${month}/${date.getFullYear()}`;
-}
-
-function dayRange(date: Date) {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return { start, end };
-}
-
 /**
  * Arma el resumen del dia a partir de datos ya consultados. Funcion pura:
  * separada del envio para poder testear el contenido sin tocar DB ni mandar correos.
@@ -51,7 +38,7 @@ export function assembleDailySummary(input: {
   const { pnl, productProfitability } = input.finance;
   return {
     branchName: input.branchName,
-    date: formatEsDate(input.date),
+    date: formatGuatemalaDate(input.date),
     revenue: pnl.revenue,
     cogs: pnl.cogs,
     grossProfit: pnl.grossProfit,
@@ -105,7 +92,7 @@ export function renderDailySummaryHtml(summary: DailySummary): string {
 
 /** Consulta los datos del dia y arma el resumen. */
 export async function buildDailySummary(branchId: string, date: Date): Promise<DailySummary> {
-  const range = dayRange(date);
+  const range = guatemalaDayRange(date);
   const [branch, finance, inventory, cashSession] = await Promise.all([
     prisma.branch.findUnique({ where: { id: branchId }, select: { name: true } }),
     getFinanceReport(branchId, range),
@@ -137,8 +124,7 @@ export async function buildDailySummary(branchId: string, date: Date): Promise<D
  */
 export async function sendDailySummary(input: { branchId: string; date?: Date; sentTo?: string }) {
   const date = input.date ?? new Date();
-  const forDate = new Date(date);
-  forDate.setHours(0, 0, 0, 0);
+  const forDate = guatemalaDayStart(date);
   const sentTo = input.sentTo ?? STUB_RECIPIENT;
 
   const existing = await prisma.emailLog.findUnique({
