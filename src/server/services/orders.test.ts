@@ -8,6 +8,7 @@ const catalog: CatalogProduct[] = [
     id: "product-vaso",
     name: "Vaso",
     basePrice: 25,
+    deliveryPrice: 30,
     modifierGroups: [
       {
         id: "group-base",
@@ -15,7 +16,7 @@ const catalog: CatalogProduct[] = [
         isRequired: true,
         minSelections: 1,
         maxSelections: 1,
-        modifiers: [{ id: "modifier-chocolate", name: "Chocolate", priceDelta: 10 }]
+        modifiers: [{ id: "modifier-chocolate", name: "Chocolate", priceDelta: 10, deliveryPriceDelta: 14 }]
       }
     ]
   }
@@ -108,6 +109,19 @@ describe("paid order service", () => {
     expect(writes[2].input).toMatchObject({
       data: { type: InventoryMovementType.SALE, quantityDelta: -2, orderId: "order-1" }
     });
+  });
+
+  it("cobra precios de delivery cuando el pago es por delivery", () => {
+    // Delivery: (30 + 14) * 2 = 88, frente a (25 + 10) * 2 = 70 en local.
+    const prepared = preparePaidOrder({
+      catalog,
+      items: [{ productId: "product-vaso", quantity: 2, modifierIds: ["modifier-chocolate"] }],
+      payments: [{ method: PaymentMethod.DELIVERY, amount: 88, reference: "Pedidos Ya" }],
+      recipeItems: []
+    });
+    expect(prepared.totals.total).toBe(88);
+    expect(prepared.pricedItems[0].basePriceSnapshot).toBe(30);
+    expect(prepared.pricedItems[0].modifiers[0].priceDeltaSnapshot).toBe(14);
   });
 
   it("rechaza pagos insuficientes antes de escribir la orden", () => {

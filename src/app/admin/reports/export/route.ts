@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { paymentMethodLabel } from "@/lib/labels";
 import { createRateLimiter } from "@/lib/rate-limit";
+import { formatGuatemalaDateTime } from "@/lib/time";
 import { formatCurrency, toNumber } from "@/lib/utils";
 import { MAX_REPORT_RANGE_DAYS, parseReportDateRange, reportRangeDays } from "@/server/admin-crud";
 import { getActiveBranch, requireRole } from "@/server/auth";
@@ -50,7 +51,7 @@ export async function GET(request: Request) {
     ...orders.flatMap((order) => {
       const payments = order.payments.map((payment) => `${paymentMethodLabel(payment.method)} ${formatCurrency(toNumber(payment.amount))}`).join(" + ");
       return order.items.map((item) => [
-        order.createdAt.toLocaleString("es-GT"),
+        formatGuatemalaDateTime(order.createdAt),
         order.id,
         order.customerName,
         order.customerPhone ?? "",
@@ -63,7 +64,9 @@ export async function GET(request: Request) {
     })
   ];
 
-  const csv = rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
+  // BOM UTF-8 para que Excel lea el archivo como UTF-8 (sin BOM lo abre con el
+  // codepage ANSI del sistema y corrompe acentos y símbolos -> caracteres basura).
+  const csv = "\uFEFF" + rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
@@ -73,5 +76,8 @@ export async function GET(request: Request) {
 }
 
 function csvCell(value: string) {
-  return `"${value.replaceAll('"', '""')}"`;
+  // Intl.NumberFormat inserta un espacio duro (U+00A0) en los montos; lo
+  // normalizamos a espacio normal para que ninguna herramienta lo muestre como basura.
+  const normalized = value.replaceAll("\u00A0", " ");
+  return `"${normalized.replaceAll('"', '""')}"`;
 }

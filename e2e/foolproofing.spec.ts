@@ -35,6 +35,10 @@ async function cancelAllOrders(page: Page) {
 async function pickClasica(page: Page) {
   await page.getByRole("button", { name: "Crema" }).first().click();
   const agregar = page.getByRole("button", { name: "Agregar" });
+  // Todo el menú exige elegir Chocolate (Blanco/Oscuro, gratis).
+  const blanco = page.getByRole("button", { name: "Blanco", exact: true });
+  if (await blanco.count()) await blanco.first().click();
+  // Las clásicas además exigen 1 topping gratis de cortesía (Oreo).
   if (!(await agregar.isEnabled())) {
     await page.getByRole("button", { name: "Oreo", exact: true }).first().click();
   }

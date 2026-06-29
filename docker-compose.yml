@@ -1,0 +1,35 @@
+# Local development database for koi-pos.
+#
+# This is for LOCAL DEV/QA ONLY — never point the app at this for production.
+# Production uses Supabase (see docs/DEPLOY.md). Credentials here are throwaway
+# and must match DATABASE_URL/DIRECT_URL in your gitignored .env / .env.local:
+#   postgresql://postgres:postgres@localhost:5433/koi_pos?schema=public
+#
+# Host port 5433 (not 5432) is intentional: it avoids clashing with any other
+# Postgres already running on this machine (e.g. Postgres.app on 5432).
+#
+# Usage:
+#   docker compose up -d db     # start (or: npm run db:up)
+#   docker compose down         # stop, keep data
+#   docker compose down -v      # stop and wipe the database volume
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: koi-pos-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: koi_pos
+    ports:
+      - "5433:5432"
+    volumes:
+      - koi_pos_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d koi_pos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  koi_pos_pgdata:

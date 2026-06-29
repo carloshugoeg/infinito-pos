@@ -8,7 +8,7 @@ type RawModifierGroup = {
   minSelections: number;
   maxSelections: number;
   sortOrder: number;
-  modifiers: Array<{ id: string; name: string; priceDelta: unknown }>;
+  modifiers: Array<{ id: string; name: string; priceDelta: unknown; deliveryPriceDelta: unknown }>;
 };
 
 function mapGroup(group: RawModifierGroup) {
@@ -22,7 +22,8 @@ function mapGroup(group: RawModifierGroup) {
     modifiers: group.modifiers.map((modifier) => ({
       id: modifier.id,
       name: modifier.name,
-      priceDelta: toNumber(modifier.priceDelta)
+      priceDelta: toNumber(modifier.priceDelta),
+      deliveryPriceDelta: toNumber(modifier.deliveryPriceDelta)
     }))
   };
 }
@@ -62,6 +63,7 @@ export async function listSellableProducts() {
     description: product.description,
     category: product.category,
     basePrice: toNumber(product.basePrice),
+    deliveryPrice: toNumber(product.deliveryPrice),
     // Primero los grupos propios (p. ej. topping de cortesia), luego los extras globales.
     modifierGroups: [...product.modifierGroups.map(mapGroup), ...mappedGlobalGroups]
   }));

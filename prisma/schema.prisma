@@ -129,7 +129,8 @@ model Product {
   name           String
   description    String?
   category       String?
-  basePrice      Decimal         @db.Decimal(12, 2)
+  basePrice      Decimal         @db.Decimal(12, 2) // precio en local
+  deliveryPrice  Decimal         @db.Decimal(12, 2) // precio cuando la venta es por delivery
   imageUrl       String?
   sortOrder      Int             @default(0)
   isActive       Boolean         @default(true)
@@ -161,7 +162,8 @@ model Modifier {
   id              String              @id @default(cuid())
   modifierGroupId String
   name            String
-  priceDelta      Decimal             @db.Decimal(12, 2)
+  priceDelta      Decimal             @db.Decimal(12, 2) // extra en local
+  deliveryPriceDelta Decimal          @db.Decimal(12, 2) // extra cuando la venta es por delivery
   sortOrder       Int                 @default(0)
   isActive        Boolean             @default(true)
   modifierGroup   ModifierGroup       @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)

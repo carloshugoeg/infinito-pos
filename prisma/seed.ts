@@ -149,6 +149,7 @@ async function createEmpiricalKioskProduct(ingredientByName: Record<string, { id
         name: "Vaso",
         description: "Producto principal usado por el kiosco actual.",
         basePrice: 0,
+        deliveryPrice: 0,
         sortOrder: 0
       }
     });
@@ -227,6 +228,7 @@ async function createProductWithRecipe(input: {
         name: input.name,
         description: input.description,
         basePrice: input.basePrice,
+        deliveryPrice: input.basePrice,
         sortOrder: input.sortOrder
       }
     });
@@ -255,7 +257,7 @@ async function createModifier(
   let modifier = await prisma.modifier.findFirst({ where: { modifierGroupId, name } });
   if (!modifier) {
     modifier = await prisma.modifier.create({
-      data: { modifierGroupId, name, priceDelta }
+      data: { modifierGroupId, name, priceDelta, deliveryPriceDelta: priceDelta }
     });
   }
 

@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Check, Minus, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatGuatemalaTime } from "@/lib/time";
@@ -15,8 +16,11 @@ import {
   calculateCashPaymentFromReceived,
   calculateCashChange,
   calculateOrderTotals,
+  MAX_CART_LINES,
   MAX_ITEM_QUANTITY,
   replaceCartItem,
+  resolveModifierDelta,
+  resolveProductUnitPrice,
   sanitizeOrderNote,
   validateCheckout,
   validateModifierSelections,
@@ -58,6 +62,7 @@ export function KioskClient({
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
   const [editingCartItemId, setEditingCartItemId] = useState<string | null>(null);
+  const [customizeOpen, setCustomizeOpen] = useState(false);
   const [cashDraft, setCashDraft] = useState("");
   const [cardDraft, setCardDraft] = useState("");
   const [transferDraft, setTransferDraft] = useState("");
@@ -79,10 +84,14 @@ export function KioskClient({
       ...item,
       product,
       modifierNames: getModifierNames(product, item.modifierIds),
-      lineTotal: calculateCartItemTotal(product, item.modifierIds, item.quantity)
+      lineTotal: calculateCartItemTotal(product, item.modifierIds, item.quantity, deliveryMode)
     };
   });
   const totals = calculateOrderTotals(pricedCart);
+  const quantityByProduct = new Map<string, number>();
+  for (const item of cart) {
+    quantityByProduct.set(item.productId, (quantityByProduct.get(item.productId) ?? 0) + item.quantity);
+  }
   const cashAmount = parseMoneyDraft(cashDraft);
   const cardAmount = parseMoneyDraft(cardDraft);
   const transferAmount = parseMoneyDraft(transferDraft);
@@ -104,6 +113,7 @@ export function KioskClient({
     setQuantity(1);
     setNotes("");
     setEditingCartItemId(null);
+    setCustomizeOpen(false);
     setCashDraft("");
     setCardDraft("");
     setTransferDraft("");
@@ -135,6 +145,7 @@ export function KioskClient({
 
   function saveItem() {
     if (!selectedProduct || selectedErrors.length) return;
+    if (!editingCartItemId && cart.length >= MAX_CART_LINES) return;
     const nextItem = {
       localId: editingCartItemId ?? crypto.randomUUID(),
       productId: selectedProduct.id,
@@ -144,6 +155,15 @@ export function KioskClient({
     };
     setCart((current) => (editingCartItemId ? replaceCartItem(current, editingCartItemId, nextItem) : [...current, nextItem]));
     resetBuilder();
+    setCustomizeOpen(false);
+  }
+
+  // Abre el pop-up para configurar UN vaso nuevo del producto (estado limpio),
+  // de modo que los toppings no se mezclen entre vasos.
+  function openCustomizeForProduct(product: CatalogProduct) {
+    setSelectedProductId(product.id);
+    resetBuilder();
+    setCustomizeOpen(true);
   }
 
   function startEditingItem(item: CartItem) {
@@ -152,6 +172,37 @@ export function KioskClient({
     setQuantity(item.quantity);
     setNotes(item.notes);
     setEditingCartItemId(item.localId);
+    setCustomizeOpen(true);
+  }
+
+  // Cierra el pop-up sin guardar y limpia el constructor.
+  function closeCustomize() {
+    setCustomizeOpen(false);
+    resetBuilder();
+  }
+
+  // -1 desde la tarjeta: descuenta primero la linea simple (sin extras) y, si no
+  // existe, la ultima linea de ese producto para deshacer un agregado con extras.
+  function quickRemoveProduct(product: CatalogProduct) {
+    setCart((current) => {
+      let index = current.findIndex(
+        (item) => item.productId === product.id && item.modifierIds.length === 0 && item.notes === ""
+      );
+      if (index < 0) {
+        for (let i = current.length - 1; i >= 0; i--) {
+          if (current[i].productId === product.id) {
+            index = i;
+            break;
+          }
+        }
+      }
+      if (index < 0) return current;
+      const line = current[index];
+      if (line.quantity <= 1) return current.filter((_, position) => position !== index);
+      const next = [...current];
+      next[index] = { ...line, quantity: line.quantity - 1 };
+      return next;
+    });
   }
 
   const paymentPayload: Array<{ method: "CASH" | "CARD" | "TRANSFER" | "DELIVERY"; amount: number; receivedAmount?: number; reference?: string }> = [];
@@ -198,33 +249,54 @@ export function KioskClient({
                 ) : null}
                 <div className="grid gap-4 grid-cols-2 landscape:grid-cols-3 xl:grid-cols-3">
                   {section.products.map((product) => {
-                    const active = selectedProduct?.id === product.id;
+                    const active = customizeOpen && selectedProductId === product.id;
+                    const cartQuantity = quantityByProduct.get(product.id) ?? 0;
+                    const openCup = () => openCustomizeForProduct(product);
                     return (
-                      <button
+                      <div
                         key={product.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedProductId(product.id);
-                          resetBuilder();
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={active}
+                        onClick={openCup}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            openCup();
+                          }
                         }}
-                        className={`group aspect-square rounded-[2rem] border p-5 text-left transition-all duration-200 ${active
+                        className={`group flex aspect-square cursor-pointer flex-col rounded-[2rem] border p-5 text-left transition-all duration-200 ${active
                             ? "selected-item border-transparent scale-[1.02]"
                             : "border-[var(--border)] bg-white hover:border-[var(--primary)] hover:shadow-md"
                           }`}
                       >
-                        <div className="flex h-full flex-col justify-between gap-3">
-                          <div>
-                            <div className="mb-3 flex items-center gap-2">
-                              <span className={`grid size-12 place-items-center rounded-2xl font-display text-xl font-black transition ${active ? "bg-white/20 text-white" : "bg-[var(--primary)]/10 text-[var(--primary)] group-hover:bg-[var(--primary)] group-hover:text-white"
-                                }`}>
-                                {product.name.slice(0, 1)}
-                              </span>
-                            </div>
-                            <div className="font-display text-xl font-black tracking-tight">{product.name}</div>
+                        <div className="flex-1">
+                          <div className="mb-3 flex items-center gap-2">
+                            <span className={`grid size-12 place-items-center rounded-2xl font-display text-xl font-black transition ${active ? "bg-white/20 text-white" : "bg-[var(--primary)]/10 text-[var(--primary)] group-hover:bg-[var(--primary)] group-hover:text-white"
+                              }`}>
+                              {product.name.slice(0, 1)}
+                            </span>
                           </div>
-                          <div className={`text-sm font-bold ${active ? "text-white" : "text-[var(--primary)]"}`}>{formatCurrency(product.basePrice)}</div>
+                          <div className="font-display text-xl font-black tracking-tight">{product.name}</div>
                         </div>
-                      </button>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`text-sm font-bold ${active ? "text-white" : "text-[var(--primary)]"}`}>{formatCurrency(resolveProductUnitPrice(product, deliveryMode))}</span>
+                          <QuantityStepper
+                            active={active}
+                            count={cartQuantity}
+                            addLabel={`Sumar uno de ${product.name}`}
+                            removeLabel={`Quitar uno de ${product.name}`}
+                            onAdd={(event) => {
+                              event.stopPropagation();
+                              openCup();
+                            }}
+                            onRemove={(event) => {
+                              event.stopPropagation();
+                              quickRemoveProduct(product);
+                            }}
+                          />
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -233,26 +305,29 @@ export function KioskClient({
           </CardContent>
         </Card>
 
-        {selectedProduct ? (
-          <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4">
-              <div>
-                <CardTitle>{editingCartItem ? "Editar" : "Personalizar"} {selectedProduct.name}</CardTitle>
-                <p className="mt-1 text-sm font-medium text-[var(--muted-foreground)]">
-                  {editingCartItem ? "Ajusta tu pedido y guarda los cambios." : "Personaliza tu eleccion con ingredientes extras."}
-                </p>
-              </div>
-              <div className="flex items-center rounded-full bg-[var(--muted)] p-1">
-                <Button data-testid="qty-minus" type="button" size="icon" variant="ghost" className="rounded-full" onClick={() => setQuantity((value) => Math.max(1, value - 1))}>
-                  <Minus size={16} />
-                </Button>
-                <strong className="w-10 text-center text-lg">{quantity}</strong>
-                <Button data-testid="qty-plus" type="button" size="icon" variant="ghost" className="rounded-full" onClick={() => setQuantity((value) => Math.min(MAX_ITEM_QUANTITY, value + 1))}>
-                  <Plus size={16} />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-8">
+        <Dialog open={customizeOpen} onOpenChange={(open) => { if (!open) closeCustomize(); }}>
+          {selectedProduct ? (
+            <DialogContent className="space-y-6">
+              <DialogHeader className="pr-10">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <DialogTitle>{editingCartItem ? "Editar" : "Personalizar"} {selectedProduct.name}</DialogTitle>
+                    <DialogDescription>
+                      {editingCartItem ? "Ajusta tu pedido y guarda los cambios." : "Personaliza este vaso con ingredientes extras."}
+                    </DialogDescription>
+                  </div>
+                  <div className="flex shrink-0 items-center rounded-full bg-[var(--muted)] p-1">
+                    <Button data-testid="qty-minus" type="button" size="icon" variant="ghost" className="rounded-full" onClick={() => setQuantity((value) => Math.max(1, value - 1))}>
+                      <Minus size={16} />
+                    </Button>
+                    <strong className="w-10 text-center text-lg">{quantity}</strong>
+                    <Button data-testid="qty-plus" type="button" size="icon" variant="ghost" className="rounded-full" onClick={() => setQuantity((value) => Math.min(MAX_ITEM_QUANTITY, value + 1))}>
+                      <Plus size={16} />
+                    </Button>
+                  </div>
+                </div>
+              </DialogHeader>
+              <div className="space-y-8">
               {selectedProduct.modifierGroups.map((group) => {
                 const selectedCount = group.modifiers.filter((modifier) => selectedModifiers.includes(modifier.id)).length;
                 return (
@@ -271,6 +346,7 @@ export function KioskClient({
                     <div className={modifierGridEnabled ? modifierGridClass(group.modifiers.length) : "flex flex-wrap gap-3"}>
                       {group.modifiers.map((modifier) => {
                         const active = selectedModifiers.includes(modifier.id);
+                        const modifierDelta = resolveModifierDelta(modifier, deliveryMode);
                         return (
                           <button
                             type="button"
@@ -305,16 +381,16 @@ export function KioskClient({
                                 <span>
                                   <span className="block text-lg font-black leading-tight sm:text-xl">{modifier.name}</span>
                                   <span className={`mt-2 block text-sm font-black ${active ? "text-white/90" : "text-[var(--primary)]"}`}>
-                                    {modifier.priceDelta > 0 ? `+${formatCurrency(modifier.priceDelta)}` : "Incluido"}
+                                    {modifierDelta > 0 ? `+${formatCurrency(modifierDelta)}` : "Incluido"}
                                   </span>
                                 </span>
                               </span>
                             ) : (
                               <>
                                 {modifier.name}
-                                {modifier.priceDelta > 0 ? (
+                                {modifierDelta > 0 ? (
                                   <span className={`ml-2 ${active ? "text-white/90" : "text-[var(--primary)]"}`}>
-                                    +{formatCurrency(modifier.priceDelta)}
+                                    +{formatCurrency(modifierDelta)}
                                   </span>
                                 ) : null}
                               </>
@@ -326,28 +402,25 @@ export function KioskClient({
                   </div>
                 );
               })}
-              {selectedErrors.length ? (
-                <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-[var(--danger)]">{selectedErrors[0]}</p>
-              ) : null}
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_220px]">
+                {selectedErrors.length ? (
+                  <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-[var(--danger)]">{selectedErrors[0]}</p>
+                ) : null}
                 <div>
                   <Label className="mb-2 block text-sm font-bold text-[var(--foreground)]">Notas especiales</Label>
                   <Input value={notes} maxLength={250} onChange={(event) => setNotes(sanitizeOrderNote(event.target.value))} placeholder="Ej. sin azucar, extra hielo..." className="rounded-xl" />
                 </div>
-                <div className="grid gap-2 self-end">
-                  <Button type="button" size="lg" onClick={saveItem} disabled={selectedErrors.length > 0}>
-                    {editingCartItem ? "Guardar" : "Agregar"}
-                  </Button>
-                  {editingCartItem ? (
-                    <Button data-testid="edit-cancel" type="button" variant="ghost" onClick={resetBuilder}>
-                      Cancelar
-                    </Button>
-                  ) : null}
-                </div>
               </div>
-            </CardContent>
-          </Card>
-        ) : null}
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <Button data-testid="edit-cancel" type="button" variant="ghost" onClick={closeCustomize}>
+                  Cancelar
+                </Button>
+                <Button type="button" size="lg" onClick={saveItem} disabled={selectedErrors.length > 0}>
+                  {editingCartItem ? "Guardar" : "Agregar"}
+                </Button>
+              </div>
+            </DialogContent>
+          ) : null}
+        </Dialog>
 
         <Card>
           <CardHeader>
@@ -489,7 +562,7 @@ export function KioskClient({
                         />
                       </div>
                       <p className="rounded-2xl bg-[var(--soft-mint)] px-4 py-3 text-xs font-semibold text-[var(--foreground)]">
-                        El total {formatCurrency(totals.total)} se registra como Delivery. No entra al efectivo de la caja: la plataforma liquida en su propio horario.
+                        Precios de delivery aplicados. El total {formatCurrency(totals.total)} se registra como Delivery. No entra al efectivo de la caja: la plataforma liquida en su propio horario.
                       </p>
                     </div>
                   ) : (
@@ -573,6 +646,56 @@ function CheckoutSubmitButton({ disabled, onClick }: { disabled: boolean; onClic
     <Button type="submit" size="lg" className="rounded-xl px-8 font-black shadow-lg shadow-[var(--primary)]/20" disabled={disabled || pending} onClick={onClick}>
       {pending ? "..." : "COBRAR"}
     </Button>
+  );
+}
+
+// Stepper compacto junto al precio. Con 0 unidades solo muestra el boton +;
+// al haber unidades en el carrito aparece el -, la cantidad y el +.
+function QuantityStepper({
+  active,
+  count,
+  addLabel,
+  removeLabel,
+  onAdd,
+  onRemove
+}: {
+  active: boolean;
+  count: number;
+  addLabel: string;
+  removeLabel: string;
+  onAdd: (event: MouseEvent<HTMLButtonElement>) => void;
+  onRemove: (event: MouseEvent<HTMLButtonElement>) => void;
+}) {
+  const removeClass = active
+    ? "border-white/40 bg-white/15 text-white hover:bg-white/25"
+    : "border-[var(--border)] bg-white text-[var(--foreground)] hover:border-[var(--primary)] hover:text-[var(--primary)]";
+  const addClass = active ? "bg-white text-[var(--primary)] hover:brightness-95" : "bg-[var(--primary)] text-white hover:brightness-110";
+  return (
+    <div className="flex shrink-0 items-center gap-1.5" onClick={(event) => event.stopPropagation()}>
+      {count > 0 ? (
+        <>
+          <button
+            type="button"
+            aria-label={removeLabel}
+            onClick={onRemove}
+            className={`grid size-11 place-items-center rounded-full border transition ${removeClass}`}
+          >
+            <Minus size={18} />
+          </button>
+          <span className={`min-w-[1.5rem] text-center text-base font-black tabular-nums ${active ? "text-white" : "text-[var(--foreground)]"}`}>
+            {count}
+          </span>
+        </>
+      ) : null}
+      <button
+        type="button"
+        aria-label={addLabel}
+        onClick={onAdd}
+        className={`grid size-11 place-items-center rounded-full border border-transparent transition ${addClass}`}
+      >
+        <Plus size={18} />
+      </button>
+    </div>
   );
 }
 

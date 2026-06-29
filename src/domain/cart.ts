@@ -2,6 +2,7 @@ export type CatalogModifier = {
   id: string;
   name: string;
   priceDelta: number;
+  deliveryPriceDelta: number;
 };
 
 export type CatalogModifierGroup = {
@@ -18,8 +19,23 @@ export type CatalogProduct = {
   name: string;
   category?: string | null;
   basePrice: number;
+  deliveryPrice: number;
   modifierGroups: CatalogModifierGroup[];
 };
+
+// Precio unitario efectivo de un producto segun el canal de venta. En delivery
+// se cobra el precio de delivery; en local, el precio base. Si por algun motivo
+// faltara el precio de delivery, cae al precio local en vez de cobrar 0.
+export function resolveProductUnitPrice(product: CatalogProduct, isDelivery: boolean) {
+  if (!isDelivery) return product.basePrice;
+  return product.deliveryPrice ?? product.basePrice;
+}
+
+// Extra efectivo de un modificador segun el canal de venta.
+export function resolveModifierDelta(modifier: CatalogModifier, isDelivery: boolean) {
+  if (!isDelivery) return modifier.priceDelta;
+  return modifier.deliveryPriceDelta ?? modifier.priceDelta;
+}
 
 export const MAX_CART_LINES = 60;
 export const MAX_ITEM_QUANTITY = 99;
@@ -91,14 +107,19 @@ export function validateModifierSelections(product: CatalogProduct, selectedModi
   return errors;
 }
 
-export function calculateCartItemTotal(product: CatalogProduct, selectedModifierIds: string[], quantity: number) {
+export function calculateCartItemTotal(
+  product: CatalogProduct,
+  selectedModifierIds: string[],
+  quantity: number,
+  isDelivery = false
+) {
   const modifiers = product.modifierGroups.flatMap((group) => group.modifiers);
   const safeQuantity = Number.isInteger(quantity) && quantity > 0 ? quantity : 0;
   const modifierTotal = Array.from(new Set(selectedModifierIds)).reduce((total, modifierId) => {
     const modifier = modifiers.find((item) => item.id === modifierId);
-    return total + (modifier?.priceDelta ?? 0);
+    return total + (modifier ? resolveModifierDelta(modifier, isDelivery) : 0);
   }, 0);
-  return roundMoney((product.basePrice + modifierTotal) * safeQuantity);
+  return roundMoney((resolveProductUnitPrice(product, isDelivery) + modifierTotal) * safeQuantity);
 }
 
 export function calculateOrderTotals(items: Array<{ lineTotal: number }>) {

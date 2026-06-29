@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, Td, Th } from "@/components/ui/table";
 import { prisma } from "@/lib/db";
+import { formatGuatemalaTime } from "@/lib/time";
 import { formatCurrency, toNumber } from "@/lib/utils";
 import { parseReportDateRange } from "@/server/admin-crud";
 import { getActiveBranch, requireRole } from "@/server/auth";
@@ -25,7 +26,12 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
 
   const [orders, payments, topProducts, topModifiers, empiricalReport] = await Promise.all([
     prisma.order.findMany({
-      where: { branchId: branch.id, createdAt: { gte: range.start, lt: range.end }, status: { not: "CANCELLED" } }
+      where: { branchId: branch.id, createdAt: { gte: range.start, lt: range.end }, status: { not: "CANCELLED" } },
+      orderBy: { createdAt: "asc" },
+      include: {
+        items: { select: { productNameSnapshot: true, quantity: true } },
+        payments: { select: { method: true, amount: true } }
+      }
     }),
     prisma.payment.groupBy({
       by: ["method"],
@@ -75,6 +81,49 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
         <Metric title="Tarjeta + transf." value={formatCurrency(byMethod(PaymentMethod.CARD) + byMethod(PaymentMethod.TRANSFER))} />
         <Metric title="Delivery" value={formatCurrency(byMethod(PaymentMethod.DELIVERY))} />
       </div>
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Ventas del dia</CardTitle>
+          <p className="text-sm text-[var(--muted-foreground)]">
+            Cada venta registrada en la app, en orden cronologico. Cotejala con las ventas anotadas
+            en el local para confirmar que todas quedaron ingresadas y que los datos cuadran.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {orders.length === 0 ? (
+            <p className="text-sm text-[var(--muted-foreground)]">No hay ventas registradas en esta fecha.</p>
+          ) : (
+            <Table>
+              <thead>
+                <tr>
+                  <Th>#</Th>
+                  <Th>Hora</Th>
+                  <Th>Detalle</Th>
+                  <Th>Metodo</Th>
+                  <Th>Total</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((order, index) => (
+                  <tr key={order.id}>
+                    <Td>{index + 1}</Td>
+                    <Td>{formatGuatemalaTime(order.createdAt)}</Td>
+                    <Td>{describeOrderItems(order.items)}</Td>
+                    <Td>{describePaymentMethods(order.payments)}</Td>
+                    <Td>{formatCurrency(toNumber(order.total))}</Td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <Td className="font-black" colSpan={4}>{orders.length} ventas en total</Td>
+                  <Td className="font-black">{formatCurrency(total)}</Td>
+                </tr>
+              </tfoot>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader><CardTitle>Productos mas vendidos</CardTitle></CardHeader>
@@ -159,6 +208,24 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
 
 function readParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  [PaymentMethod.CASH]: "Efectivo",
+  [PaymentMethod.CARD]: "Tarjeta",
+  [PaymentMethod.TRANSFER]: "Transferencia",
+  [PaymentMethod.DELIVERY]: "Delivery"
+};
+
+function describeOrderItems(items: { productNameSnapshot: string; quantity: number }[]) {
+  if (items.length === 0) return "Sin productos";
+  return items.map((item) => `${item.quantity}x ${item.productNameSnapshot}`).join(", ");
+}
+
+function describePaymentMethods(payments: { method: PaymentMethod }[]) {
+  const methods = Array.from(new Set(payments.map((payment) => payment.method)));
+  if (methods.length === 0) return "Sin pago";
+  return methods.map((method) => PAYMENT_METHOD_LABELS[method]).join(" + ");
 }
 
 function Metric({ title, value }: { title: string; value: string }) {

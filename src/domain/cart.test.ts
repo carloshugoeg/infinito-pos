@@ -8,6 +8,7 @@ import {
   calculateOrderTotals,
   buildSaleSuccessPath,
   replaceCartItem,
+  resolveProductUnitPrice,
   sanitizeOrderNote,
   validateCheckout,
   validateModifierSelections,
@@ -19,6 +20,7 @@ const product: CatalogProduct = {
   id: "cup",
   name: "Vaso pequeno",
   basePrice: 25,
+  deliveryPrice: 30,
   modifierGroups: [
     {
       id: "chocolate",
@@ -27,8 +29,8 @@ const product: CatalogProduct = {
       minSelections: 1,
       maxSelections: 1,
       modifiers: [
-        { id: "white", name: "Blanco", priceDelta: 0 },
-        { id: "dark", name: "Oscuro", priceDelta: 0 }
+        { id: "white", name: "Blanco", priceDelta: 0, deliveryPriceDelta: 0 },
+        { id: "dark", name: "Oscuro", priceDelta: 0, deliveryPriceDelta: 0 }
       ]
     },
     {
@@ -38,8 +40,8 @@ const product: CatalogProduct = {
       minSelections: 0,
       maxSelections: 2,
       modifiers: [
-        { id: "oreo", name: "Oreo", priceDelta: 5 },
-        { id: "peanut", name: "Mania", priceDelta: 3 }
+        { id: "oreo", name: "Oreo", priceDelta: 5, deliveryPriceDelta: 8 },
+        { id: "peanut", name: "Mania", priceDelta: 3, deliveryPriceDelta: 4 }
       ]
     }
   ]
@@ -57,6 +59,15 @@ describe("cart domain", () => {
     expect(calculateCartItemTotal(product, ["white", "oreo"], 2)).toBe(60);
     expect(calculateCartItemTotal(product, ["white", "oreo", "oreo"], 2)).toBe(60);
     expect(calculateOrderTotals([{ lineTotal: 60 }, { lineTotal: 25 }]).total).toBe(85);
+  });
+
+  it("aplica precios de delivery a producto y extras cuando es delivery", () => {
+    // Local: (25 + 5) * 2 = 60. Delivery: (30 + 8) * 2 = 76.
+    expect(calculateCartItemTotal(product, ["white", "oreo"], 2, true)).toBe(76);
+    // Extra sin precio de delivery distinto sigue igual; el producto sube a 30.
+    expect(calculateCartItemTotal(product, ["white"], 1, true)).toBe(30);
+    expect(resolveProductUnitPrice(product, false)).toBe(25);
+    expect(resolveProductUnitPrice(product, true)).toBe(30);
   });
 
   it("valida pagos divididos y vuelto", () => {
@@ -156,6 +167,7 @@ const clasicaConExtras: CatalogProduct = {
   name: "Fresas con Crema",
   category: "Fresas Clasicas",
   basePrice: 36,
+  deliveryPrice: 45,
   modifierGroups: [
     {
       id: "cortesia",
@@ -164,8 +176,8 @@ const clasicaConExtras: CatalogProduct = {
       minSelections: 1,
       maxSelections: 1,
       modifiers: [
-        { id: "cortesia-oreo", name: "Oreo", priceDelta: 0 },
-        { id: "cortesia-lotus", name: "Lotus", priceDelta: 0 }
+        { id: "cortesia-oreo", name: "Oreo", priceDelta: 0, deliveryPriceDelta: 0 },
+        { id: "cortesia-lotus", name: "Lotus", priceDelta: 0, deliveryPriceDelta: 0 }
       ]
     },
     {
@@ -176,8 +188,8 @@ const clasicaConExtras: CatalogProduct = {
       minSelections: 0,
       maxSelections: 14,
       modifiers: [
-        { id: "extra-oreo", name: "Extra Oreo", priceDelta: 6 },
-        { id: "extra-choco-leche", name: "Extra Chocolate con Leche", priceDelta: 20 }
+        { id: "extra-oreo", name: "Extra Oreo", priceDelta: 6, deliveryPriceDelta: 6 },
+        { id: "extra-choco-leche", name: "Extra Chocolate con Leche", priceDelta: 20, deliveryPriceDelta: 20 }
       ]
     }
   ]

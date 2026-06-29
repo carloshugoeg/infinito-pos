@@ -25,6 +25,21 @@ Before touching code, every agent must read:
 - Mark a subtask complete only when it is coded, reviewed, and tested.
 - Keep task notes short and useful.
 
+## Memory Rule (OBLIGATORIO)
+
+Todo cambio **fundamental** DEBE quedar registrado en la memoria del proyecto
+(`.claude/projects/.../memory/`) antes de cerrar la tarea — para evitar errores de IA por
+contexto desactualizado en sesiones futuras. Es un requisito, no una sugerencia.
+
+Cuenta como "fundamental" (no exhaustivo): cambios al catálogo/precios/recetas o a otros datos de
+producción; migraciones de esquema o de base de datos; cambios de entorno, infra o despliegue;
+decisiones de arquitectura o de alcance (V1); credenciales/refs de prod; o cualquier hecho no
+derivable del código o del historial de git que un agente futuro necesitaría saber.
+
+Cómo: actualiza el archivo de memoria existente que ya cubra el tema (no dupliques) y su línea en
+`MEMORY.md`; crea uno nuevo solo si no existe. Si un cambio fundamental no se reflejó en memoria,
+la tarea NO está completa.
+
 ## Checklist Discipline
 
 Before touching code, **read the checklists that apply** to the task (see `docs/README.md`). After verified work, **update checklist state** — do not only report completion in chat.

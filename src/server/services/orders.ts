@@ -5,6 +5,8 @@ import {
   calculateOrderTotals,
   MAX_CART_LINES,
   MAX_ITEM_QUANTITY,
+  resolveModifierDelta,
+  resolveProductUnitPrice,
   roundMoney,
   sanitizeOrderNote,
   validateCheckout,
@@ -77,6 +79,11 @@ export function preparePaidOrder(input: {
   });
   if (itemErrors.length) throw new Error(Array.from(new Set(itemErrors)).join(" "));
 
+  // El canal de venta se deriva del metodo de pago: una orden liquidada por
+  // delivery cobra los precios de delivery. Se recalcula en el servidor para no
+  // confiar en los totales del cliente.
+  const isDelivery = payments.some((payment) => payment.method === "DELIVERY");
+
   const ingredientCosts = input.ingredientCosts ?? {};
   const pricedItems = normalizedItems.map((item) => {
     const product = input.catalog.find((candidate) => candidate.id === item.productId);
@@ -91,13 +98,18 @@ export function preparePaidOrder(input: {
     return {
       input: item,
       product,
-      lineTotal: calculateCartItemTotal(product, item.modifierIds, item.quantity),
+      basePriceSnapshot: resolveProductUnitPrice(product, isDelivery),
+      lineTotal: calculateCartItemTotal(product, item.modifierIds, item.quantity, isDelivery),
       unitCost: cost.unitCost,
       lineCost: cost.lineCost,
       modifiers: item.modifierIds.map((modifierId) => {
         const modifier = product.modifierGroups.flatMap((group) => group.modifiers).find((candidate) => candidate.id === modifierId);
         if (!modifier) throw new Error("Modificador invalido.");
-        return modifier;
+        return {
+          id: modifier.id,
+          name: modifier.name,
+          priceDeltaSnapshot: resolveModifierDelta(modifier, isDelivery)
+        };
       })
     };
   });
@@ -153,7 +165,7 @@ export async function createPaidOrderInTransaction(
         create: input.prepared.pricedItems.map((item) => ({
           productId: item.product.id,
           productNameSnapshot: item.product.name,
-          basePriceSnapshot: item.product.basePrice,
+          basePriceSnapshot: item.basePriceSnapshot,
           quantity: item.input.quantity,
           lineTotal: item.lineTotal,
           unitCostSnapshot: item.unitCost,
@@ -163,7 +175,7 @@ export async function createPaidOrderInTransaction(
             create: item.modifiers.map((modifier) => ({
               modifierId: modifier.id,
               modifierNameSnapshot: modifier.name,
-              priceDeltaSnapshot: modifier.priceDelta
+              priceDeltaSnapshot: modifier.priceDeltaSnapshot
             }))
           }
         }))
