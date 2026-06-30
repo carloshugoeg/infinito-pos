@@ -1,15 +1,11 @@
 import { PrismaClient, StockLocationKind, UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { assertNonProductionDatabase } from "../src/lib/test-guard";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  if (process.env.NODE_ENV === "production" && process.env.ALLOW_PROD_SEED !== "true") {
-    throw new Error(
-      "Refusing to run the demo seed in production. Create real data via the admin UI, " +
-        "or set ALLOW_PROD_SEED=true only if you truly intend to seed."
-    );
-  }
+  assertNonProductionDatabase("db:seed");
 
   const passwordHash = await bcrypt.hash("admin12345", 10);
 

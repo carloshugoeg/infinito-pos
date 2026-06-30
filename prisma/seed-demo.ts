@@ -1,4 +1,5 @@
 import { PrismaClient, CashSessionStatus, OrderStatus, PaymentMethod, InventoryMovementType } from "@prisma/client";
+import { assertNonProductionDatabase } from "../src/lib/test-guard";
 
 const prisma = new PrismaClient();
 
@@ -11,6 +12,8 @@ function randomItem<T>(arr: T[]): T {
 }
 
 async function main() {
+  assertNonProductionDatabase("db:seed:demo");
+
   console.log("Starting demo seed...");
 
   // Get base data that should exist from normal seed
