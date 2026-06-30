@@ -120,12 +120,15 @@ export async function toggleUserActiveAction(formData: FormData) {
 
 export async function createProductAction(formData: FormData) {
   await requireRole([UserRole.ADMIN]);
+  const basePrice = parseNumberField(formData.get("basePrice"), "Precio base", { fallback: 0, min: 0, max: 999_999.99, decimals: 2 });
   await prisma.product.create({
     data: {
       name: normalizeFormText(formData.get("name")),
       description: normalizeFormText(formData.get("description")) || null,
       category: normalizeFormText(formData.get("category")) || null,
-      basePrice: parseNumberField(formData.get("basePrice"), "Precio base", { fallback: 0, min: 0, max: 999_999.99, decimals: 2 }),
+      basePrice,
+      // Si se deja vacio, el precio de delivery arranca igual al local.
+      deliveryPrice: parseNumberField(formData.get("deliveryPrice"), "Precio delivery", { fallback: basePrice, min: 0, max: 999_999.99, decimals: 2 }),
       sortOrder: parseNumberField(formData.get("sortOrder"), "Orden", { fallback: 0, min: 0, max: 100_000, integer: true })
     }
   });
@@ -135,13 +138,16 @@ export async function createProductAction(formData: FormData) {
 
 export async function updateProductAction(formData: FormData) {
   await requireRole([UserRole.ADMIN]);
+  const basePrice = parseNumberField(formData.get("basePrice"), "Precio base", { fallback: 0, min: 0, max: 999_999.99, decimals: 2 });
   await prisma.product.update({
     where: { id: normalizeFormText(formData.get("id")) },
     data: {
       name: normalizeFormText(formData.get("name")),
       description: normalizeFormText(formData.get("description")) || null,
       category: normalizeFormText(formData.get("category")) || null,
-      basePrice: parseNumberField(formData.get("basePrice"), "Precio base", { fallback: 0, min: 0, max: 999_999.99, decimals: 2 }),
+      basePrice,
+      // Si se deja vacio, el precio de delivery arranca igual al local.
+      deliveryPrice: parseNumberField(formData.get("deliveryPrice"), "Precio delivery", { fallback: basePrice, min: 0, max: 999_999.99, decimals: 2 }),
       sortOrder: parseNumberField(formData.get("sortOrder"), "Orden", { fallback: 0, min: 0, max: 100_000, integer: true })
     }
   });
@@ -258,11 +264,14 @@ export async function removeModifierGroupAction(formData: FormData) {
 
 export async function createModifierAction(formData: FormData) {
   await requireRole([UserRole.ADMIN]);
+  const priceDelta = parseNumberField(formData.get("priceDelta"), "Precio extra", { fallback: 0, min: 0, max: 999_999.99, decimals: 2 });
   await prisma.modifier.create({
     data: {
       modifierGroupId: normalizeFormText(formData.get("modifierGroupId")),
       name: normalizeFormText(formData.get("name")),
-      priceDelta: parseNumberField(formData.get("priceDelta"), "Precio extra", { fallback: 0, min: 0, max: 999_999.99, decimals: 2 }),
+      priceDelta,
+      // Si se deja vacio, el extra de delivery arranca igual al del local.
+      deliveryPriceDelta: parseNumberField(formData.get("deliveryPriceDelta"), "Precio delivery extra", { fallback: priceDelta, min: 0, max: 999_999.99, decimals: 2 }),
       sortOrder: parseNumberField(formData.get("sortOrder"), "Orden", { fallback: 0, min: 0, max: 100_000, integer: true })
     }
   });
@@ -271,11 +280,14 @@ export async function createModifierAction(formData: FormData) {
 
 export async function updateModifierAction(formData: FormData) {
   await requireRole([UserRole.ADMIN]);
+  const priceDelta = parseNumberField(formData.get("priceDelta"), "Precio extra", { fallback: 0, min: 0, max: 999_999.99, decimals: 2 });
   await prisma.modifier.update({
     where: { id: normalizeFormText(formData.get("id")) },
     data: {
       name: normalizeFormText(formData.get("name")),
-      priceDelta: parseNumberField(formData.get("priceDelta"), "Precio extra", { fallback: 0, min: 0, max: 999_999.99, decimals: 2 }),
+      priceDelta,
+      // Si se deja vacio, el extra de delivery arranca igual al del local.
+      deliveryPriceDelta: parseNumberField(formData.get("deliveryPriceDelta"), "Precio delivery extra", { fallback: priceDelta, min: 0, max: 999_999.99, decimals: 2 }),
       sortOrder: parseNumberField(formData.get("sortOrder"), "Orden", { fallback: 0, min: 0, max: 100_000, integer: true })
     }
   });

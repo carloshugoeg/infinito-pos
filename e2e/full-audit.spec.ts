@@ -34,6 +34,10 @@ async function cancelAllOrders(page: Page) {
 async function sellClasica(page: Page) {
   await page.getByRole("button", { name: "Crema" }).first().click();
   const agregar = page.getByRole("button", { name: "Agregar" });
+  // Todo el menú exige elegir Chocolate (Blanco/Oscuro, gratis).
+  const blanco = page.getByRole("button", { name: "Blanco", exact: true });
+  if (await blanco.count()) await blanco.first().click();
+  // Las clásicas además exigen 1 topping gratis de cortesía (Oreo).
   if (!(await agregar.isEnabled())) {
     await page.getByRole("button", { name: "Oreo", exact: true }).first().click();
   }
@@ -158,7 +162,10 @@ test.describe("Auditoría — Catálogo", () => {
 
     await ensureCashOpen(page);
     await page.goto("/kiosk");
-    await expect(page.getByRole("button", { name: productName })).toBeVisible();
+    // El card del producto es role="button" y comparte nombre accesible con el stepper
+    // "Sumar uno de …", así que getByRole resolvía a 2 elementos. Afirmamos el nombre
+    // visible exacto del producto para evitar el strict-mode.
+    await expect(page.getByText(productName, { exact: true })).toBeVisible();
   });
 });
 
@@ -208,7 +215,9 @@ test.describe("Auditoría — Reportes", () => {
     await sellClasica(page);
 
     await page.goto("/admin/reports");
-    await expect(page.getByText("Ventas")).toBeVisible();
+    // La página ahora incluye la tarjeta "Ventas del dia" y copys con "… ventas …",
+    // así que "Ventas" coincidía con 4 elementos. Apuntamos exacto a la métrica "Ventas".
+    await expect(page.getByText("Ventas", { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Productos mas vendidos" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Corte diario" })).toBeVisible();
 

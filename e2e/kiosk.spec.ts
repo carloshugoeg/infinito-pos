@@ -51,6 +51,10 @@ async function pay(page: Page, method: "cashAmount" | "cardAmount" | "transferAm
 async function selectProduct(page: Page, name: string) {
   await page.getByRole("button", { name }).first().click();
   const agregar = page.getByRole("button", { name: "Agregar" });
+  // Todo el menú exige elegir Chocolate (Blanco/Oscuro, gratis).
+  const blanco = page.getByRole("button", { name: "Blanco", exact: true });
+  if (await blanco.count()) await blanco.first().click();
+  // Las clásicas además exigen 1 topping gratis de cortesía (Oreo).
   if (!(await agregar.isEnabled())) {
     await page.getByRole("button", { name: "Oreo", exact: true }).first().click();
   }
@@ -107,6 +111,10 @@ test.describe("Kiosk — Flujos de Compra", () => {
     await selectProduct(page, "Fresas con Chocolate con Leche");
     await expect(page.getByRole("button", { name: "Souffle de chocolate" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Tapadera" })).toBeVisible();
+
+    // El personalizador es un pop-up modal: cerrarlo antes de elegir otro vaso.
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Agregar" })).toHaveCount(0);
 
     // Yogurt no es de chocolate → sin souffle, pero sí con tapadera/porta vasos.
     await selectProduct(page, "Parfait de Yogurt");

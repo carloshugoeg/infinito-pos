@@ -69,3 +69,16 @@ export function formatGuatemalaDate(value: string | Date) {
   const [year, month, day] = guatemalaDateInput(value).split("-");
   return `${day}/${month}/${year}`;
 }
+
+/**
+ * Fecha y hora `dd/mm/aaaa HH:MM` (24h) en hora de Guatemala, solo ASCII.
+ * Pensada para exportaciones (CSV/Excel): sin sufijo "a. m./p. m." ni dependencia
+ * de la zona horaria del servidor (en Vercel el server corre en UTC).
+ */
+export function formatGuatemalaDateTime(value: string | Date) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  const wall = toGuatemalaWallClock(date);
+  const hours = String(wall.getUTCHours()).padStart(2, "0");
+  const minutes = String(wall.getUTCMinutes()).padStart(2, "0");
+  return `${formatGuatemalaDate(date)} ${hours}:${minutes}`;
+}

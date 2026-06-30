@@ -29,9 +29,13 @@ test.describe("Smoke kiosko en tablet (768×1024)", () => {
     await page.goto("/kiosk");
     await expect(page.getByText("Caja abierta")).toBeVisible();
 
-    // "Crema" → "Fresas con Crema" (clásica): exige 1 topping gratis de cortesía.
+    // "Crema" → "Fresas con Crema" (clásica): exige Chocolate + topping de cortesía.
     await page.getByRole("button", { name: "Crema" }).first().click();
     const agregar = page.getByRole("button", { name: "Agregar" });
+    // Todo el menú exige elegir Chocolate (Blanco/Oscuro, gratis).
+    const blanco = page.getByRole("button", { name: "Blanco", exact: true });
+    if (await blanco.count()) await blanco.first().click();
+    // Las clásicas además exigen 1 topping gratis de cortesía (Oreo).
     if (!(await agregar.isEnabled())) {
       await page.getByRole("button", { name: "Oreo", exact: true }).first().click();
     }

@@ -10,3 +10,9 @@ playwright-report/
 test-results/
 e2e/.auth/
 .vercel
+
+# Salida de scripts/dump-report-csv.ts (spot-check del export)
+reporte-ejemplo.csv
+
+# Respaldos de BD (contienen datos de producción, nunca versionar)
+backups/

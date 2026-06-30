@@ -77,6 +77,9 @@ type ProductSeed = {
   description: string;
   category: string;
   basePrice: number;
+  // Precio de delivery por producto. Si se omite, arranca igual al precio local
+  // (pendiente: cargar los precios de delivery reales de Infinito).
+  deliveryPrice?: number;
   sortOrder: number;
   isActive: boolean;
   recipe: Array<[string, number]>;
@@ -91,6 +94,16 @@ const BASE: Array<[string, number]> = [
 ];
 
 const PRODUCTS: ProductSeed[] = [
+  // Producto simple: solo fresa en vaso, sin topping de cortesia.
+  {
+    name: "Fresas Simples",
+    description: "Vaso de fresas simples: 150g de fresa, sin topping.",
+    category: CATEGORY_CLASICAS,
+    basePrice: 25,
+    sortOrder: 0,
+    isActive: true,
+    recipe: [...BASE, ["Fresa", 150]]
+  },
   // A. Fresas Clasicas (base personalizable, 1 topping gratis obligatorio)
   {
     name: "Fresas con Crema",
@@ -193,22 +206,23 @@ const COURTESY_TOPPINGS: Array<[string, string, number]> = [
   ["Granola", "Topping Granola", 15]
 ];
 
-// Lista GLOBAL de extras (aplica a todos los productos): [nombre, +precio, ingrediente, gramos].
-const GLOBAL_EXTRAS: Array<[string, number, string, number]> = [
-  ["Extra Oreo", 6, "Topping Oreo", 15],
-  ["Extra Lotus", 6, "Topping Lotus", 15],
-  ["Extra Marshmallow", 6, "Topping Marshmallow", 15],
-  ["Extra Coco rallado", 6, "Topping Coco", 15],
-  ["Extra Almendra", 6, "Topping Almendra", 12],
-  ["Extra Pistacho", 6, "Topping Pistacho", 12],
-  ["Extra Kataifi", 6, "Topping Kataifi", 15],
-  ["Extra Granola", 6, "Topping Granola", 15],
-  ["Extra Crema Clasica", 15, "Crema", 80],
-  ["Extra Chocolate con Leche", 20, "Chocolate con leche (cobertura)", 70],
-  ["Extra Chocolate Blanco", 20, "Chocolate blanco (cobertura)", 70],
-  ["Extra Crema Ferrero", 25, "Crema Ferrero", 120],
-  ["Extra Crema Raffaello", 25, "Crema Rafaello", 140],
-  ["Extra Crema Lotus", 25, "Crema Lotus", 30]
+// Lista GLOBAL de extras (aplica a todos los productos):
+// [nombre, +precio local, +precio delivery, ingrediente, gramos].
+const GLOBAL_EXTRAS: Array<[string, number, number, string, number]> = [
+  ["Extra Oreo", 6, 6, "Topping Oreo", 15],
+  ["Extra Lotus", 6, 6, "Topping Lotus", 15],
+  ["Extra Marshmallow", 6, 6, "Topping Marshmallow", 15],
+  ["Extra Coco rallado", 6, 6, "Topping Coco", 15],
+  ["Extra Almendra", 6, 6, "Topping Almendra", 12],
+  ["Extra Pistacho", 6, 8, "Topping Pistacho", 12],
+  ["Extra Kataifi", 6, 6, "Topping Kataifi", 15],
+  ["Extra Granola", 6, 6, "Topping Granola", 15],
+  ["Extra Crema Clasica", 15, 15, "Crema", 80],
+  ["Extra Chocolate con Leche", 20, 20, "Chocolate con leche (cobertura)", 70],
+  ["Extra Chocolate Blanco", 20, 20, "Chocolate blanco (cobertura)", 70],
+  ["Extra Crema Ferrero", 25, 25, "Crema Ferrero", 120],
+  ["Extra Crema Raffaello", 25, 25, "Crema Rafaello", 140],
+  ["Extra Crema Lotus", 25, 25, "Crema Lotus", 30]
 ];
 
 // Add-ons "Para llevar": modificadores gratis (priceDelta 0) solo para costeo de empaque.
@@ -249,12 +263,18 @@ async function upsertModifier(
   name: string,
   priceDelta: number,
   recipe: Array<[string, number]>,
-  ingredientByName: IngredientMap
+  ingredientByName: IngredientMap,
+  deliveryPriceDelta: number = priceDelta
 ) {
   const existing = await prisma.modifier.findFirst({ where: { modifierGroupId: groupId, name } });
   const modifier = existing
-    ? await prisma.modifier.update({ where: { id: existing.id }, data: { priceDelta: new Prisma.Decimal(priceDelta), isActive: true } })
-    : await prisma.modifier.create({ data: { modifierGroupId: groupId, name, priceDelta: new Prisma.Decimal(priceDelta) } });
+    ? await prisma.modifier.update({
+        where: { id: existing.id },
+        data: { priceDelta: new Prisma.Decimal(priceDelta), deliveryPriceDelta: new Prisma.Decimal(deliveryPriceDelta), isActive: true }
+      })
+    : await prisma.modifier.create({
+        data: { modifierGroupId: groupId, name, priceDelta: new Prisma.Decimal(priceDelta), deliveryPriceDelta: new Prisma.Decimal(deliveryPriceDelta) }
+      });
 
   for (const [ingredientName, quantity] of recipe) {
     const ingredient = ingredientByName[ingredientName];
@@ -327,6 +347,7 @@ async function main() {
       description: product.description,
       category: product.category,
       basePrice: new Prisma.Decimal(product.basePrice),
+      deliveryPrice: new Prisma.Decimal(product.deliveryPrice ?? product.basePrice),
       sortOrder: product.sortOrder,
       isActive: product.isActive
     };
@@ -361,6 +382,9 @@ async function main() {
       for (const [optName, ingName, grams] of COURTESY_TOPPINGS) {
         await upsertModifier(group.id, optName, 0, [[ingName, grams]], ingredientByName);
       }
+      // Opcion para declinar el topping gratis: gratis, sin receta (no consume ingrediente).
+      // Al ser grupo max 1, satisface el requerido sin agregar ningun topping.
+      await upsertModifier(group.id, "Sin topping", 0, [], ingredientByName);
     }
 
     // Miel gratis opcional solo en el Parfait de Yogurt.
@@ -382,8 +406,8 @@ async function main() {
     sortOrder: 3,
     isGlobal: true
   });
-  for (const [name, priceDelta, ingName, grams] of GLOBAL_EXTRAS) {
-    await upsertModifier(extrasGroup.id, name, priceDelta, [[ingName, grams]], ingredientByName);
+  for (const [name, priceDelta, deliveryPriceDelta, ingName, grams] of GLOBAL_EXTRAS) {
+    await upsertModifier(extrasGroup.id, name, priceDelta, [[ingName, grams]], ingredientByName, deliveryPriceDelta);
   }
 
   // 5) Desactivar cualquier producto que no sea del menu nuevo (menu anterior + demo).

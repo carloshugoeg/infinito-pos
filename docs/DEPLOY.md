@@ -187,3 +187,78 @@ Vercel sirve HTTPS por defecto (TLS automático, también en dominio propio). La
 
 Al completar los 8 con su verificación, los P0-INF de `docs/GO_LIVE_CHECKLIST.md` quedan en
 `[x]` y **Gate A (infraestructura)** está cubierto.
+
+---
+
+## Apéndice — Cambios incrementales de catálogo en prod (post go-live)
+
+El catálogo real ya está cargado en prod (proyecto Supabase **`koi-pos-prod` =
+`htlcnzlhuqvcovaggzos`**). Para cambios **pequeños** del catálogo, **NO re-corras el seed
+completo** (`db:seed:infinito`) contra prod: el seed reescribe costos placeholder (`REVISAR
+costo`) y **desactiva** cualquier producto fuera de `PRODUCT_NAMES`
+(`updateMany { isActive: false }`). En su lugar aplica el cambio puntual por **SQL dirigido**
+en el SQL Editor de Supabase (o vía Supabase MCP), tal como se hizo con "Fresas Simples"
+(2026-06-28).
+
+### Pendiente: opción "Sin topping" en las clásicas (tarea T23)
+
+La opción `"Sin topping"` (para declinar el topping de cortesía gratis obligatorio) ya está en
+el código/seed y aplicada en dev, pero **falta en prod**. Hay que insertar un modificador
+gratis y sin receta en cada uno de los 3 grupos requeridos `"Topping de cortesia"` (Fresas con
+Crema, Choco c/Leche, Choco Blanco).
+
+**Antes de correr el SQL**, revisa si la columna `deliveryPriceDelta` ya existe en `"Modifier"`
+en prod (depende de si la migración `add_delivery_prices` de la feature delivery ya fue
+desplegada):
+
+```sql
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'Modifier' AND column_name = 'deliveryPriceDelta';
+```
+
+- **Si devuelve la fila** (columna presente, es `NOT NULL`): incluye `"deliveryPriceDelta"` en
+  el INSERT (variante A).
+- **Si no devuelve nada**: omite esa columna (variante B).
+
+```sql
+-- Variante A (con deliveryPriceDelta). Idempotente: solo inserta donde no exista ya.
+INSERT INTO "Modifier" ("id", "modifierGroupId", "name", "priceDelta", "deliveryPriceDelta", "sortOrder", "isActive")
+SELECT 'sintop_' || substr(md5(g."id"), 1, 20), g."id", 'Sin topping', 0, 0, 0, true
+FROM "ModifierGroup" g
+WHERE g."name" = 'Topping de cortesia'
+  AND NOT EXISTS (SELECT 1 FROM "Modifier" m WHERE m."modifierGroupId" = g."id" AND m."name" = 'Sin topping');
+
+-- Variante B (sin deliveryPriceDelta): igual que A pero quita "deliveryPriceDelta" de la lista
+-- de columnas y el segundo 0 del SELECT.
+```
+
+Notas:
+
+- **No** crees ningún `RecipeItem` para esta fila → COGS 0 (correcto: no se sirve topping).
+- El `id` se genera determinístico por grupo (la `default cuid()` de Prisma no aplica en un
+  INSERT manual); el `NOT EXISTS` por `(grupo, name)` lo hace re-ejecutable sin duplicar.
+- `sortOrder = 0` (igual que el resto de toppings de cortesía); la UI lo lista alfabético, así
+  que "Sin topping" aparece al final del grupo.
+
+**Verificación:**
+
+```sql
+SELECT count(*) FROM "Modifier" WHERE "name" = 'Sin topping';  -- debe dar 3
+```
+
+Luego en `/kiosk` abre una clásica (ej. Fresas con Crema): "Sin topping" debe aparecer en
+"Topping de cortesia"; al elegirla queda "Seleccionado 1 de 1" y **Agregar** se habilita sin
+sumar precio.
+
+### Alternativa (solo si vas a re-sembrar todo de cualquier modo)
+
+Si por otra razón re-corres el seed completo en prod, "Sin topping" se crea solo:
+
+```bash
+ALLOW_PROD_SEED=true NODE_ENV=production DOTENV_CONFIG_PATH=.env.production.local \
+  BRANCH_CODE=SUC-001 BRANCH_NAME=Pradera npm run db:seed:infinito
+```
+
+Pero ten en cuenta los efectos colaterales del seed (costos placeholder, desactivación de
+productos fuera de la lista) y que requiere la migración `add_delivery_prices` ya desplegada
+(`deliveryPriceDelta` es `NOT NULL`). Borra `.env.production.local` al terminar.
