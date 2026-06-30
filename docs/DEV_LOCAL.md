@@ -7,6 +7,9 @@ on your machine); the app runs with `next dev`.
 - **Database**: Postgres 16 in Docker, exposed on host port **5433** (not 5432, to
   avoid clashing with Postgres.app or other local instances).
 - **Login**: `admin@koi.local` / `admin12345` (demo admin from `db:seed`).
+- **Test login**: `qa@koi.local` / `qatest12345` — assigned only to the **TESTS**
+  and **TESTS2** sucursales (`db:seed:tests`). All E2E and smoke-test data lands here,
+  never on a real branch.
 - **Catalog**: the real Infinito menu (`db:seed:infinito`) — the same data the
   E2E suite expects (Fresas Clásicas with required courtesy topping + Gourmet).
 
@@ -50,6 +53,7 @@ npm run db:down       # stop the DB (keeps data)
 | `npm run db:reset` | **Wipe** the DB volume and start fresh (then re-run `dev:setup`) |
 | `npm run db:studio` | Prisma Studio (browse/edit data) |
 | `npm run db:seed:demo` | Add randomized demo orders/history on top of the seed |
+| `npm run db:seed:tests` | Create the TESTS/TESTS2 sucursales + qa test account |
 | `npm run test` | Unit tests (Vitest) |
 | `npm run test:e2e` | Playwright E2E (needs DB seeded + dev server; webServer auto-starts) |
 
