@@ -20,6 +20,11 @@ async function main() {
   const admin = await prisma.user.findFirst({ where: { email: "admin@koi.local" } });
   if (!admin) throw new Error("Admin user not found.");
 
+  const quiosco = await prisma.stockLocation.findFirst({
+    where: { branchId: branch.id, kind: "QUIOSCO" }
+  });
+  if (!quiosco) throw new Error("Quiosco no encontrado. Corre el seed estandar primero.");
+
   const products = await prisma.product.findMany({
     include: {
       modifierGroups: {
@@ -123,7 +128,7 @@ async function main() {
             if (!isCancelled) {
               for (const ri of mod.recipeItems) {
                 inventoryMoves.push({
-                  branchId: branch.id,
+                  locationId: quiosco.id,
                   ingredientId: ri.ingredientId,
                   type: InventoryMovementType.SALE,
                   quantityDelta: -Number(ri.quantity) * qty,
@@ -140,7 +145,7 @@ async function main() {
         if (!isCancelled) {
           for (const ri of product.recipeItems) {
             inventoryMoves.push({
-              branchId: branch.id,
+              locationId: quiosco.id,
               ingredientId: ri.ingredientId,
               type: InventoryMovementType.SALE,
               quantityDelta: -Number(ri.quantity) * qty,
@@ -206,16 +211,15 @@ async function main() {
       });
 
       if (!isCancelled && inventoryMoves.length > 0) {
-        // Create moves and attach order id
         await prisma.inventoryMovement.createMany({
-          data: inventoryMoves.map(m => ({ ...m, orderId: order.id }))
+          data: inventoryMoves.map((m) => ({ ...m, orderId: order.id }))
         });
 
-        // Also update actual inventory quantities
         for (const move of inventoryMoves) {
-          await prisma.branchInventory.update({
-            where: { branchId_ingredientId: { branchId: branch.id, ingredientId: move.ingredientId } },
-            data: { quantityOnHand: { increment: move.quantityDelta } }
+          await prisma.locationInventory.upsert({
+            where: { locationId_ingredientId: { locationId: quiosco.id, ingredientId: move.ingredientId } },
+            update: { quantityOnHand: { increment: move.quantityDelta } },
+            create: { locationId: quiosco.id, ingredientId: move.ingredientId, quantityOnHand: move.quantityDelta }
           });
         }
       }

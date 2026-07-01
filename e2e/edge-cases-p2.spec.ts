@@ -82,7 +82,9 @@ test.describe("Edge cases P2", () => {
     // El catálogo Infinito se siembra sin inventario, así que la venta deja stock negativo.
     await sellCrema(page);
     await page.goto("/admin/inventory");
-    await expect(page.getByText("Bajo/negativo").first()).toBeVisible({ timeout: 10_000 });
+    // La tarjeta "Stock actual" marca el stock bajo/negativo poniendo la celda de
+    // cantidad con la clase `text-red-700` (ver src/app/admin/inventory/page.tsx).
+    await expect(page.locator("td.text-red-700").first()).toBeVisible({ timeout: 10_000 });
   });
 
   // P2-QA-05

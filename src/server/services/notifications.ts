@@ -1,4 +1,4 @@
-import { CashSessionStatus } from "@prisma/client";
+import { CashSessionStatus, StockLocationKind } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { formatCurrency, toNumber } from "@/lib/utils";
 import { isLowOrNegativeStock } from "@/domain/inventory";
@@ -96,7 +96,10 @@ export async function buildDailySummary(branchId: string, date: Date): Promise<D
   const [branch, finance, inventory, cashSession] = await Promise.all([
     prisma.branch.findUnique({ where: { id: branchId }, select: { name: true } }),
     getFinanceReport(branchId, range),
-    prisma.branchInventory.findMany({ where: { branchId }, include: { ingredient: true } }),
+    prisma.locationInventory.findMany({
+      where: { location: { branchId, kind: StockLocationKind.QUIOSCO } },
+      include: { ingredient: true }
+    }),
     prisma.cashSession.findFirst({
       where: { branchId, status: CashSessionStatus.CLOSED, closedAt: { gte: range.start, lt: range.end } },
       orderBy: { closedAt: "desc" }

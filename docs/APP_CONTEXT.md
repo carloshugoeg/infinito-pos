@@ -172,12 +172,15 @@ Estados: `OPEN` → `CLOSED`. Solo una sesión abierta por sucursal a la vez.
 
 **Motor de recetas:** un producto vendido puede consumir ingredientes del producto base y de cada modificador seleccionado.
 
-#### Inventario (por sucursal)
+#### Inventario (bodega central + quiosco por sucursal)
 
 | Modelo | Propósito |
 | --- | --- |
-| `BranchInventory` | Stock actual por ingrediente y sucursal |
-| `InventoryMovement` | Auditoría: `PURCHASE`, `WASTE`, `ADJUSTMENT`, `SALE` |
+| `StockLocation` | Ubicaciones de stock: una `BODEGA` central (sin sucursal) + un `QUIOSCO` por sucursal |
+| `LocationInventory` | Stock actual por ingrediente y ubicación |
+| `InventoryMovement` | Auditoría por ubicación: `PURCHASE`, `WASTE`, `ADJUSTMENT`, `SALE`, `TRANSFER` (las dos piernas de un traslado se agrupan por `transferId`) |
+
+Las ventas consumen el quiosco de la sucursal; los traslados mueven stock de la bodega central al quiosco.
 
 #### Ventas
 
@@ -202,7 +205,8 @@ Estados de orden: `PENDING` → `PREPARING` → `DELIVERED` | `CANCELLED`
 ```mermaid
 erDiagram
   Branch ||--o{ CashSession : has
-  Branch ||--o{ BranchInventory : stocks
+  Branch ||--o{ StockLocation : owns
+  StockLocation ||--o{ LocationInventory : holds
   Branch ||--o{ Order : receives
   User ||--o{ UserBranch : assigned
   Branch ||--o{ UserBranch : grants
@@ -530,7 +534,7 @@ createPaidOrderAction
        └─ createPaidOrderInTransaction()
             ├─ order + items + modifiers (snapshots)
             ├─ payments + changeAmount
-            └─ branchInventory decrement + SALE movements
+            └─ locationInventory (quiosco) decrement + SALE movements
 ```
 
 ---

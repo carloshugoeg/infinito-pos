@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaClient, Prisma, StockLocationKind } from "@prisma/client";
 
 /**
  * Seed del catalogo REAL de Infinito segun el "Instructivo de menu".
@@ -16,7 +16,7 @@ import { PrismaClient, Prisma } from "@prisma/client";
  * Los gramajes de las recetas nuevas/extras son estimaciones.
  *
  * Idempotente: re-ejecutar actualiza costos/precios/recetas sin duplicar.
- * No siembra BranchInventory (sin stock todavia).
+ * Crea la bodega central y el quiosco de la sucursal, pero sin stock inicial.
  */
 
 const prisma = new PrismaClient();
@@ -317,10 +317,20 @@ async function main() {
   // 1) Sucursal operativa (reutiliza la del bootstrap; no se siembra inventario).
   const branchCode = (process.env.BRANCH_CODE ?? "CENTRO").toUpperCase();
   const branchName = (process.env.BRANCH_NAME ?? "Sucursal Centro").trim();
-  await prisma.branch.upsert({
+  const branch = await prisma.branch.upsert({
     where: { code: branchCode },
     update: { name: branchName, isActive: true },
     create: { name: branchName, code: branchCode, address: "Guatemala" }
+  });
+
+  let bodega = await prisma.stockLocation.findFirst({ where: { kind: StockLocationKind.BODEGA } });
+  if (!bodega) {
+    bodega = await prisma.stockLocation.create({ data: { kind: StockLocationKind.BODEGA, name: "Bodega central" } });
+  }
+  await prisma.stockLocation.upsert({
+    where: { branchId_kind: { branchId: branch.id, kind: StockLocationKind.QUIOSCO } },
+    update: {},
+    create: { kind: StockLocationKind.QUIOSCO, name: `Quiosco ${branch.name}`, branchId: branch.id }
   });
 
   // 2) Ingredientes (con costo + presentacion de compra).

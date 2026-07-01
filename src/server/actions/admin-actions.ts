@@ -5,9 +5,10 @@ import { InventoryMovementType, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { calculateManualInventoryDelta, isManualInventoryMovementType, validateManualInventoryMovement } from "@/domain/inventory";
+import { buildTransferLegs, calculateManualInventoryDelta, isManualInventoryMovementType, validateManualInventoryMovement, validateStockTransfer } from "@/domain/inventory";
 import { chooseRemovalMode, normalizeBranchCode, normalizeFormText, parseNumberField, parseOptionalNumberField } from "@/server/admin-crud";
 import { getActiveBranch, requireRole } from "@/server/auth";
+import { getManageableLocations } from "@/server/inventory/locations";
 
 export async function createBranchAction(formData: FormData) {
   await requireRole([UserRole.ADMIN]);
@@ -428,15 +429,19 @@ export async function recordInventoryMovementAction(formData: FormData) {
   if (movementErrors.length || !isManualInventoryMovementType(type)) throw new Error(movementErrors.join(" "));
   const quantityDelta = calculateManualInventoryDelta(type, quantity);
 
+  const [bodega, quiosco] = await getManageableLocations(branch.id);
+  const requestedLocationId = normalizeFormText(formData.get("locationId"));
+  const location = [bodega, quiosco].find((loc) => loc.id === requestedLocationId) ?? quiosco;
+
   await prisma.$transaction(async (tx) => {
-    await tx.branchInventory.upsert({
-      where: { branchId_ingredientId: { branchId: branch.id, ingredientId } },
+    await tx.locationInventory.upsert({
+      where: { locationId_ingredientId: { locationId: location.id, ingredientId } },
       update: { quantityOnHand: { increment: quantityDelta } },
-      create: { branchId: branch.id, ingredientId, quantityOnHand: quantityDelta }
+      create: { locationId: location.id, ingredientId, quantityOnHand: quantityDelta }
     });
     await tx.inventoryMovement.create({
       data: {
-        branchId: branch.id,
+        locationId: location.id,
         ingredientId,
         type: type as InventoryMovementType,
         quantityDelta,
@@ -453,9 +458,11 @@ export async function reverseInventoryMovementAction(formData: FormData) {
   await requireRole([UserRole.ADMIN]);
   const { user, branch } = await getActiveBranch();
   const id = normalizeFormText(formData.get("id"));
+  const locations = await getManageableLocations(branch.id);
+  const locationIds = locations.map((loc) => loc.id);
+
   const movement = await prisma.inventoryMovement.findFirst({
-    where: { id, branchId: branch.id },
-    include: { ingredient: true }
+    where: { id, locationId: { in: locationIds } }
   });
 
   if (!movement || movement.type === InventoryMovementType.SALE) {
@@ -463,23 +470,77 @@ export async function reverseInventoryMovementAction(formData: FormData) {
     return;
   }
 
-  const reversalDelta = Number(movement.quantityDelta) * -1;
+  const legs = movement.transferId
+    ? await prisma.inventoryMovement.findMany({ where: { transferId: movement.transferId } })
+    : [movement];
+
+  // Solo se revierte si todas las piernas caen dentro de las ubicaciones que este admin gestiona.
+  if (legs.some((leg) => !locationIds.includes(leg.locationId))) {
+    revalidatePath("/admin/inventory");
+    return;
+  }
+
   await prisma.$transaction(async (tx) => {
-    await tx.branchInventory.upsert({
-      where: { branchId_ingredientId: { branchId: branch.id, ingredientId: movement.ingredientId } },
-      update: { quantityOnHand: { increment: reversalDelta } },
-      create: { branchId: branch.id, ingredientId: movement.ingredientId, quantityOnHand: reversalDelta }
-    });
-    await tx.inventoryMovement.create({
-      data: {
-        branchId: branch.id,
-        ingredientId: movement.ingredientId,
-        type: InventoryMovementType.ADJUSTMENT,
-        quantityDelta: reversalDelta,
-        reason: `Anulacion de movimiento ${movement.type}: ${movement.reason}`,
-        createdById: user.id
-      }
-    });
+    for (const leg of legs) {
+      const reversalDelta = Number(leg.quantityDelta) * -1;
+      await tx.locationInventory.upsert({
+        where: { locationId_ingredientId: { locationId: leg.locationId, ingredientId: leg.ingredientId } },
+        update: { quantityOnHand: { increment: reversalDelta } },
+        create: { locationId: leg.locationId, ingredientId: leg.ingredientId, quantityOnHand: reversalDelta }
+      });
+      await tx.inventoryMovement.create({
+        data: {
+          locationId: leg.locationId,
+          ingredientId: leg.ingredientId,
+          type: InventoryMovementType.ADJUSTMENT,
+          quantityDelta: reversalDelta,
+          reason: `Anulacion de movimiento ${leg.type}: ${leg.reason}`,
+          createdById: user.id
+        }
+      });
+    }
+  });
+
+  revalidatePath("/admin/inventory");
+}
+
+export async function transferStockAction(formData: FormData) {
+  await requireRole([UserRole.ADMIN]);
+  const { user, branch } = await getActiveBranch();
+  const ingredientId = normalizeFormText(formData.get("ingredientId"));
+  const quantity = parseNumberField(formData.get("quantity"), "Cantidad", { min: 0.001, max: 999_999.999, decimals: 3 });
+
+  const [bodega, quiosco] = await getManageableLocations(branch.id);
+  const transferErrors = validateStockTransfer({
+    quantity,
+    fromLocationId: bodega.id,
+    toLocationId: quiosco.id
+  });
+  if (transferErrors.length) throw new Error(transferErrors.join(" "));
+
+  const legs = buildTransferLegs({ quantity, fromLocationId: bodega.id, toLocationId: quiosco.id });
+  const transferId = crypto.randomUUID();
+  const reason = normalizeFormText(formData.get("reason"), `Traslado bodega -> ${quiosco.name}`);
+
+  await prisma.$transaction(async (tx) => {
+    for (const leg of legs) {
+      await tx.locationInventory.upsert({
+        where: { locationId_ingredientId: { locationId: leg.locationId, ingredientId } },
+        update: { quantityOnHand: { increment: leg.quantityDelta } },
+        create: { locationId: leg.locationId, ingredientId, quantityOnHand: leg.quantityDelta }
+      });
+      await tx.inventoryMovement.create({
+        data: {
+          locationId: leg.locationId,
+          ingredientId,
+          type: InventoryMovementType.TRANSFER,
+          quantityDelta: leg.quantityDelta,
+          reason,
+          transferId,
+          createdById: user.id
+        }
+      });
+    }
   });
 
   revalidatePath("/admin/inventory");
@@ -519,20 +580,19 @@ export async function goAdminAction() {
 }
 
 async function countBranchDependencies(branchId: string) {
-  const [users, cashSessions, inventory, movements, orders] = await Promise.all([
+  const [users, cashSessions, locations, orders] = await Promise.all([
     prisma.userBranch.count({ where: { branchId } }),
     prisma.cashSession.count({ where: { branchId } }),
-    prisma.branchInventory.count({ where: { branchId } }),
-    prisma.inventoryMovement.count({ where: { branchId } }),
+    prisma.stockLocation.count({ where: { branchId } }),
     prisma.order.count({ where: { branchId } })
   ]);
-  return users + cashSessions + inventory + movements + orders;
+  return users + cashSessions + locations + orders;
 }
 
 async function countIngredientDependencies(ingredientId: string) {
   const [recipes, inventory, movements] = await Promise.all([
     prisma.recipeItem.count({ where: { ingredientId } }),
-    prisma.branchInventory.count({ where: { ingredientId } }),
+    prisma.locationInventory.count({ where: { ingredientId } }),
     prisma.inventoryMovement.count({ where: { ingredientId } })
   ]);
   return recipes + inventory + movements;

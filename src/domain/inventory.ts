@@ -71,3 +71,36 @@ export function isManualInventoryMovementType(value: unknown): value is ManualIn
 function hasQuantityPrecision(value: number) {
   return Math.abs(value * 1000 - Math.round(value * 1000)) < 1e-9;
 }
+
+export type StockTransferInput = {
+  quantity: number;
+  fromLocationId: string;
+  toLocationId: string;
+};
+
+export type TransferMovementLeg = {
+  locationId: string;
+  quantityDelta: number;
+};
+
+export function validateStockTransfer(input: StockTransferInput) {
+  const errors: string[] = [];
+  if (!input.fromLocationId || !input.toLocationId) errors.push("Selecciona origen y destino.");
+  else if (input.fromLocationId === input.toLocationId) errors.push("El origen y el destino deben ser distintos.");
+  if (!Number.isFinite(input.quantity) || input.quantity <= 0) errors.push("La cantidad debe ser mayor a cero.");
+  if (Number.isFinite(input.quantity) && Math.abs(input.quantity) > MAX_INVENTORY_QUANTITY) {
+    errors.push("La cantidad es demasiado alta.");
+  }
+  if (Number.isFinite(input.quantity) && input.quantity > 0 && !hasQuantityPrecision(input.quantity)) {
+    errors.push("La cantidad permite maximo 3 decimales.");
+  }
+  return errors;
+}
+
+export function buildTransferLegs(input: StockTransferInput): [TransferMovementLeg, TransferMovementLeg] {
+  const amount = Math.abs(input.quantity);
+  return [
+    { locationId: input.fromLocationId, quantityDelta: -amount },
+    { locationId: input.toLocationId, quantityDelta: amount }
+  ];
+}

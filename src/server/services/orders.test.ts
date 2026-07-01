@@ -42,9 +42,9 @@ describe("paid order service", () => {
           return { id: "order-1" };
         }
       },
-      branchInventory: {
+      locationInventory: {
         upsert: async (input: { where: unknown; update: unknown; create: unknown }) => {
-          writes.push({ model: "branchInventory", input });
+          writes.push({ model: "locationInventory", input });
           return {};
         }
       },
@@ -58,6 +58,7 @@ describe("paid order service", () => {
 
     const orderId = await createPaidOrderInTransaction(tx, {
       branchId: "branch-1",
+      quioscoLocationId: "quiosco-1",
       cashSessionId: "cash-1",
       customerNit: "CF",
       customerName: "Consumidor Final",
@@ -104,10 +105,10 @@ describe("paid order service", () => {
       }
     });
     expect(writes[1].input).toMatchObject({
-      create: { branchId: "branch-1", ingredientId: "ingredient-vaso", quantityOnHand: -2 }
+      create: { locationId: "quiosco-1", ingredientId: "ingredient-vaso", quantityOnHand: -2 }
     });
     expect(writes[2].input).toMatchObject({
-      data: { type: InventoryMovementType.SALE, quantityDelta: -2, orderId: "order-1" }
+      data: { locationId: "quiosco-1", type: InventoryMovementType.SALE, quantityDelta: -2, orderId: "order-1" }
     });
   });
 
