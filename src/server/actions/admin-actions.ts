@@ -5,7 +5,7 @@ import { InventoryMovementType, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { calculateManualInventoryDelta, isManualInventoryMovementType, validateManualInventoryMovement } from "@/domain/inventory";
+import { buildTransferLegs, calculateManualInventoryDelta, isManualInventoryMovementType, validateManualInventoryMovement, validateStockTransfer } from "@/domain/inventory";
 import { chooseRemovalMode, normalizeBranchCode, normalizeFormText, parseNumberField, parseOptionalNumberField } from "@/server/admin-crud";
 import { getActiveBranch, requireRole } from "@/server/auth";
 import { getManageableLocations } from "@/server/inventory/locations";
@@ -470,23 +470,77 @@ export async function reverseInventoryMovementAction(formData: FormData) {
     return;
   }
 
-  const reversalDelta = Number(movement.quantityDelta) * -1;
+  const legs = movement.transferId
+    ? await prisma.inventoryMovement.findMany({ where: { transferId: movement.transferId } })
+    : [movement];
+
+  // Solo se revierte si todas las piernas caen dentro de las ubicaciones que este admin gestiona.
+  if (legs.some((leg) => !locationIds.includes(leg.locationId))) {
+    revalidatePath("/admin/inventory");
+    return;
+  }
+
   await prisma.$transaction(async (tx) => {
-    await tx.locationInventory.upsert({
-      where: { locationId_ingredientId: { locationId: movement.locationId, ingredientId: movement.ingredientId } },
-      update: { quantityOnHand: { increment: reversalDelta } },
-      create: { locationId: movement.locationId, ingredientId: movement.ingredientId, quantityOnHand: reversalDelta }
-    });
-    await tx.inventoryMovement.create({
-      data: {
-        locationId: movement.locationId,
-        ingredientId: movement.ingredientId,
-        type: InventoryMovementType.ADJUSTMENT,
-        quantityDelta: reversalDelta,
-        reason: `Anulacion de movimiento ${movement.type}: ${movement.reason}`,
-        createdById: user.id
-      }
-    });
+    for (const leg of legs) {
+      const reversalDelta = Number(leg.quantityDelta) * -1;
+      await tx.locationInventory.upsert({
+        where: { locationId_ingredientId: { locationId: leg.locationId, ingredientId: leg.ingredientId } },
+        update: { quantityOnHand: { increment: reversalDelta } },
+        create: { locationId: leg.locationId, ingredientId: leg.ingredientId, quantityOnHand: reversalDelta }
+      });
+      await tx.inventoryMovement.create({
+        data: {
+          locationId: leg.locationId,
+          ingredientId: leg.ingredientId,
+          type: InventoryMovementType.ADJUSTMENT,
+          quantityDelta: reversalDelta,
+          reason: `Anulacion de movimiento ${leg.type}: ${leg.reason}`,
+          createdById: user.id
+        }
+      });
+    }
+  });
+
+  revalidatePath("/admin/inventory");
+}
+
+export async function transferStockAction(formData: FormData) {
+  await requireRole([UserRole.ADMIN]);
+  const { user, branch } = await getActiveBranch();
+  const ingredientId = normalizeFormText(formData.get("ingredientId"));
+  const quantity = parseNumberField(formData.get("quantity"), "Cantidad", { min: 0.001, max: 999_999.999, decimals: 3 });
+
+  const [bodega, quiosco] = await getManageableLocations(branch.id);
+  const transferErrors = validateStockTransfer({
+    quantity,
+    fromLocationId: bodega.id,
+    toLocationId: quiosco.id
+  });
+  if (transferErrors.length) throw new Error(transferErrors.join(" "));
+
+  const legs = buildTransferLegs({ quantity, fromLocationId: bodega.id, toLocationId: quiosco.id });
+  const transferId = crypto.randomUUID();
+  const reason = normalizeFormText(formData.get("reason"), `Traslado bodega -> ${quiosco.name}`);
+
+  await prisma.$transaction(async (tx) => {
+    for (const leg of legs) {
+      await tx.locationInventory.upsert({
+        where: { locationId_ingredientId: { locationId: leg.locationId, ingredientId } },
+        update: { quantityOnHand: { increment: leg.quantityDelta } },
+        create: { locationId: leg.locationId, ingredientId, quantityOnHand: leg.quantityDelta }
+      });
+      await tx.inventoryMovement.create({
+        data: {
+          locationId: leg.locationId,
+          ingredientId,
+          type: InventoryMovementType.TRANSFER,
+          quantityDelta: leg.quantityDelta,
+          reason,
+          transferId,
+          createdById: user.id
+        }
+      });
+    }
   });
 
   revalidatePath("/admin/inventory");
