@@ -6,6 +6,7 @@ import {
   calculateChangeBreakdown,
   calculateInferredCashPayment,
   calculateOrderTotals,
+  buildCupCartItems,
   buildSaleSuccessPath,
   replaceCartItem,
   resolveProductUnitPrice,
@@ -157,6 +158,28 @@ describe("cart domain", () => {
 
   it("crea una ruta de exito unica para limpiar el cobro despues de cada venta", () => {
     expect(buildSaleSuccessPath("order 123")).toBe("/kiosk?ok=venta&order=order%20123");
+  });
+});
+
+describe("buildCupCartItems", () => {
+  it("crea una linea de carrito por vaso, cantidad 1 cada una", () => {
+    expect(buildCupCartItems("cup", [["white"], ["dark", "oreo"]], "sin azucar")).toEqual([
+      { productId: "cup", quantity: 1, modifierIds: ["white"], notes: "sin azucar" },
+      { productId: "cup", quantity: 1, modifierIds: ["dark", "oreo"], notes: "sin azucar" }
+    ]);
+  });
+
+  it("con un solo vaso devuelve un array de una sola linea", () => {
+    expect(buildCupCartItems("cup", [["white"]], "")).toEqual([
+      { productId: "cup", quantity: 1, modifierIds: ["white"], notes: "" }
+    ]);
+  });
+
+  it("preserva vasos sin toppings como modifierIds vacio", () => {
+    expect(buildCupCartItems("cup", [[], []], "")).toEqual([
+      { productId: "cup", quantity: 1, modifierIds: [], notes: "" },
+      { productId: "cup", quantity: 1, modifierIds: [], notes: "" }
+    ]);
   });
 });
 
