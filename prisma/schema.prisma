@@ -246,6 +246,8 @@ model InventoryMovement {
   reason        String
   orderId       String?
   transferId    String?
+  reversedAt    DateTime?
+  reversedById  String?
   createdById   String
   createdAt     DateTime              @default(now())
   location      StockLocation         @relation(fields: [locationId], references: [id])

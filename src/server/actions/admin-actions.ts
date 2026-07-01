@@ -9,6 +9,7 @@ import { buildTransferLegs, calculateManualInventoryDelta, isManualInventoryMove
 import { chooseRemovalMode, normalizeBranchCode, normalizeFormText, parseNumberField, parseOptionalNumberField } from "@/server/admin-crud";
 import { getActiveBranch, requireRole } from "@/server/auth";
 import { getManageableLocations } from "@/server/inventory/locations";
+import { reverseMovementLegsInTransaction } from "@/server/services/inventory";
 
 export async function createBranchAction(formData: FormData) {
   await requireRole([UserRole.ADMIN]);
@@ -465,7 +466,8 @@ export async function reverseInventoryMovementAction(formData: FormData) {
     where: { id, locationId: { in: locationIds } }
   });
 
-  if (!movement || movement.type === InventoryMovementType.SALE) {
+  // SALE nunca se revierte; un movimiento ya anulado no se vuelve a revertir (idempotencia).
+  if (!movement || movement.type === InventoryMovementType.SALE || movement.reversedAt) {
     revalidatePath("/admin/inventory");
     return;
   }
@@ -480,26 +482,22 @@ export async function reverseInventoryMovementAction(formData: FormData) {
     return;
   }
 
-  await prisma.$transaction(async (tx) => {
-    for (const leg of legs) {
-      const reversalDelta = Number(leg.quantityDelta) * -1;
-      await tx.locationInventory.upsert({
-        where: { locationId_ingredientId: { locationId: leg.locationId, ingredientId: leg.ingredientId } },
-        update: { quantityOnHand: { increment: reversalDelta } },
-        create: { locationId: leg.locationId, ingredientId: leg.ingredientId, quantityOnHand: reversalDelta }
-      });
-      await tx.inventoryMovement.create({
-        data: {
-          locationId: leg.locationId,
-          ingredientId: leg.ingredientId,
-          type: InventoryMovementType.ADJUSTMENT,
-          quantityDelta: reversalDelta,
-          reason: `Anulacion de movimiento ${leg.type}: ${leg.reason}`,
-          createdById: user.id
-        }
-      });
-    }
-  });
+  // La guarda transaccional (reversedAt: null) hace la anulacion idempotente incluso ante
+  // dos envios concurrentes: solo la primera transaccion crea las anulaciones.
+  await prisma.$transaction((tx) =>
+    reverseMovementLegsInTransaction(tx, {
+      legs: legs.map((leg) => ({
+        id: leg.id,
+        locationId: leg.locationId,
+        ingredientId: leg.ingredientId,
+        type: leg.type,
+        quantityDelta: Number(leg.quantityDelta),
+        reason: leg.reason
+      })),
+      reversedById: user.id,
+      reversedAt: new Date()
+    })
+  );
 
   revalidatePath("/admin/inventory");
 }
