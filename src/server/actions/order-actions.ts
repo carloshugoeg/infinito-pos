@@ -8,6 +8,7 @@ import { toNumber } from "@/lib/utils";
 import { buildSaleSuccessPath, sanitizeOrderNote } from "@/domain/cart";
 import { validateOrderStatusTransition, type OrderStatusValue } from "@/domain/order-status";
 import { getActiveBranch } from "@/server/auth";
+import { getQuioscoLocation } from "@/server/inventory/locations";
 import { getOpenCashSession } from "@/server/actions/cash-actions";
 import { listSellableProducts } from "@/server/queries/catalog";
 import { createPaidOrderInTransaction, preparePaidOrder, type IncomingCartItem, type IncomingPayment } from "@/server/services/orders";
@@ -57,9 +58,12 @@ export async function createPaidOrderAction(formData: FormData) {
         })
       : null;
 
+  const quiosco = await getQuioscoLocation(branch.id);
+
   const orderId = await prisma.$transaction(async (tx) => {
     return createPaidOrderInTransaction(tx, {
       branchId: branch.id,
+      quioscoLocationId: quiosco.id,
       cashSessionId: cashSession.id,
       customerId: customer?.id,
       customerNit,

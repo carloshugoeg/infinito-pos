@@ -37,7 +37,7 @@ type PaidOrderTransactionClient = {
   order: {
     create(input: { data: unknown }): Promise<{ id: string }>;
   };
-  branchInventory: {
+  locationInventory: {
     upsert(input: { where: unknown; update: unknown; create: unknown }): Promise<unknown>;
   };
   inventoryMovement: {
@@ -137,6 +137,7 @@ export async function createPaidOrderInTransaction(
   tx: PaidOrderTransactionClient,
   input: {
     branchId: string;
+    quioscoLocationId: string;
     cashSessionId: string;
     customerId?: string | null;
     customerNit: string;
@@ -193,14 +194,14 @@ export async function createPaidOrderInTransaction(
   });
 
   for (const item of input.prepared.usage) {
-    await tx.branchInventory.upsert({
-      where: { branchId_ingredientId: { branchId: input.branchId, ingredientId: item.ingredientId } },
+    await tx.locationInventory.upsert({
+      where: { locationId_ingredientId: { locationId: input.quioscoLocationId, ingredientId: item.ingredientId } },
       update: { quantityOnHand: { decrement: item.quantity } },
-      create: { branchId: input.branchId, ingredientId: item.ingredientId, quantityOnHand: -item.quantity }
+      create: { locationId: input.quioscoLocationId, ingredientId: item.ingredientId, quantityOnHand: -item.quantity }
     });
     await tx.inventoryMovement.create({
       data: {
-        branchId: input.branchId,
+        locationId: input.quioscoLocationId,
         ingredientId: item.ingredientId,
         type: InventoryMovementType.SALE,
         quantityDelta: -item.quantity,

@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { calculateManualInventoryDelta, isManualInventoryMovementType, validateManualInventoryMovement } from "@/domain/inventory";
 import { chooseRemovalMode, normalizeBranchCode, normalizeFormText, parseNumberField, parseOptionalNumberField } from "@/server/admin-crud";
 import { getActiveBranch, requireRole } from "@/server/auth";
+import { getManageableLocations } from "@/server/inventory/locations";
 
 export async function createBranchAction(formData: FormData) {
   await requireRole([UserRole.ADMIN]);
@@ -428,15 +429,19 @@ export async function recordInventoryMovementAction(formData: FormData) {
   if (movementErrors.length || !isManualInventoryMovementType(type)) throw new Error(movementErrors.join(" "));
   const quantityDelta = calculateManualInventoryDelta(type, quantity);
 
+  const [bodega, quiosco] = await getManageableLocations(branch.id);
+  const requestedLocationId = normalizeFormText(formData.get("locationId"));
+  const location = [bodega, quiosco].find((loc) => loc.id === requestedLocationId) ?? quiosco;
+
   await prisma.$transaction(async (tx) => {
-    await tx.branchInventory.upsert({
-      where: { branchId_ingredientId: { branchId: branch.id, ingredientId } },
+    await tx.locationInventory.upsert({
+      where: { locationId_ingredientId: { locationId: location.id, ingredientId } },
       update: { quantityOnHand: { increment: quantityDelta } },
-      create: { branchId: branch.id, ingredientId, quantityOnHand: quantityDelta }
+      create: { locationId: location.id, ingredientId, quantityOnHand: quantityDelta }
     });
     await tx.inventoryMovement.create({
       data: {
-        branchId: branch.id,
+        locationId: location.id,
         ingredientId,
         type: type as InventoryMovementType,
         quantityDelta,
@@ -453,9 +458,11 @@ export async function reverseInventoryMovementAction(formData: FormData) {
   await requireRole([UserRole.ADMIN]);
   const { user, branch } = await getActiveBranch();
   const id = normalizeFormText(formData.get("id"));
+  const locations = await getManageableLocations(branch.id);
+  const locationIds = locations.map((loc) => loc.id);
+
   const movement = await prisma.inventoryMovement.findFirst({
-    where: { id, branchId: branch.id },
-    include: { ingredient: true }
+    where: { id, locationId: { in: locationIds } }
   });
 
   if (!movement || movement.type === InventoryMovementType.SALE) {
@@ -465,14 +472,14 @@ export async function reverseInventoryMovementAction(formData: FormData) {
 
   const reversalDelta = Number(movement.quantityDelta) * -1;
   await prisma.$transaction(async (tx) => {
-    await tx.branchInventory.upsert({
-      where: { branchId_ingredientId: { branchId: branch.id, ingredientId: movement.ingredientId } },
+    await tx.locationInventory.upsert({
+      where: { locationId_ingredientId: { locationId: movement.locationId, ingredientId: movement.ingredientId } },
       update: { quantityOnHand: { increment: reversalDelta } },
-      create: { branchId: branch.id, ingredientId: movement.ingredientId, quantityOnHand: reversalDelta }
+      create: { locationId: movement.locationId, ingredientId: movement.ingredientId, quantityOnHand: reversalDelta }
     });
     await tx.inventoryMovement.create({
       data: {
-        branchId: branch.id,
+        locationId: movement.locationId,
         ingredientId: movement.ingredientId,
         type: InventoryMovementType.ADJUSTMENT,
         quantityDelta: reversalDelta,
@@ -519,20 +526,19 @@ export async function goAdminAction() {
 }
 
 async function countBranchDependencies(branchId: string) {
-  const [users, cashSessions, inventory, movements, orders] = await Promise.all([
+  const [users, cashSessions, locations, orders] = await Promise.all([
     prisma.userBranch.count({ where: { branchId } }),
     prisma.cashSession.count({ where: { branchId } }),
-    prisma.branchInventory.count({ where: { branchId } }),
-    prisma.inventoryMovement.count({ where: { branchId } }),
+    prisma.stockLocation.count({ where: { branchId } }),
     prisma.order.count({ where: { branchId } })
   ]);
-  return users + cashSessions + inventory + movements + orders;
+  return users + cashSessions + locations + orders;
 }
 
 async function countIngredientDependencies(ingredientId: string) {
   const [recipes, inventory, movements] = await Promise.all([
     prisma.recipeItem.count({ where: { ingredientId } }),
-    prisma.branchInventory.count({ where: { ingredientId } }),
+    prisma.locationInventory.count({ where: { ingredientId } }),
     prisma.inventoryMovement.count({ where: { ingredientId } })
   ]);
   return recipes + inventory + movements;

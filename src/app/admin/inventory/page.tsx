@@ -11,19 +11,21 @@ import { inventoryMovementTypeLabel } from "@/lib/labels";
 import { toNumber } from "@/lib/utils";
 import { recordInventoryMovementAction, reverseInventoryMovementAction } from "@/server/actions/admin-actions";
 import { getActiveBranch, requireRole } from "@/server/auth";
+import { getManageableLocations } from "@/server/inventory/locations";
 
 export default async function InventoryPage() {
   await requireRole([UserRole.ADMIN]);
   const { branch } = await getActiveBranch();
+  const [bodega, quiosco] = await getManageableLocations(branch.id);
   const [ingredients, inventory, movements] = await Promise.all([
     prisma.ingredient.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.branchInventory.findMany({
-      where: { branchId: branch.id },
+    prisma.locationInventory.findMany({
+      where: { locationId: quiosco.id },
       include: { ingredient: true },
       orderBy: { ingredient: { name: "asc" } }
     }),
     prisma.inventoryMovement.findMany({
-      where: { branchId: branch.id },
+      where: { locationId: { in: [bodega.id, quiosco.id] } },
       include: { ingredient: true },
       orderBy: { createdAt: "desc" },
       take: 20

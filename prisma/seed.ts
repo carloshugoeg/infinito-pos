@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole } from "@prisma/client";
+import { PrismaClient, StockLocationKind, UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -65,12 +65,22 @@ async function main() {
 
   const ingredientByName = Object.fromEntries(ingredients.map((item) => [item.name, item]));
 
+  let bodega = await prisma.stockLocation.findFirst({ where: { kind: StockLocationKind.BODEGA } });
+  if (!bodega) {
+    bodega = await prisma.stockLocation.create({ data: { kind: StockLocationKind.BODEGA, name: "Bodega central" } });
+  }
+  const quiosco = await prisma.stockLocation.upsert({
+    where: { branchId_kind: { branchId: branch.id, kind: StockLocationKind.QUIOSCO } },
+    update: {},
+    create: { kind: StockLocationKind.QUIOSCO, name: `Quiosco ${branch.name}`, branchId: branch.id }
+  });
+
   for (const ingredient of ingredients) {
-    await prisma.branchInventory.upsert({
-      where: { branchId_ingredientId: { branchId: branch.id, ingredientId: ingredient.id } },
+    await prisma.locationInventory.upsert({
+      where: { locationId_ingredientId: { locationId: quiosco.id, ingredientId: ingredient.id } },
       update: {},
       create: {
-        branchId: branch.id,
+        locationId: quiosco.id,
         ingredientId: ingredient.id,
         quantityOnHand: ingredient.unit === "unidad" ? 50 : 5000
       }

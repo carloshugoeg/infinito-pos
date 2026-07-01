@@ -11,7 +11,8 @@ const inventoryMovementTypeLabels: Record<InventoryMovementType, string> = {
   [InventoryMovementType.PURCHASE]: "Compra",
   [InventoryMovementType.WASTE]: "Merma",
   [InventoryMovementType.ADJUSTMENT]: "Ajuste",
-  [InventoryMovementType.SALE]: "Venta"
+  [InventoryMovementType.SALE]: "Venta",
+  [InventoryMovementType.TRANSFER]: "Traslado"
 };
 
 export function paymentMethodLabel(method: PaymentMethod | string) {
