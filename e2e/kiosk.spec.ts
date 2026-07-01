@@ -166,15 +166,35 @@ test.describe("Kiosk — Flujos de Compra", () => {
     await cobrar(page);
   });
 
-  test("cantidad × 2 con botón + → total se duplica", async ({ page }) => {
-    await selectProduct(page, "Fresas con Crema"); // Q36
+  test("stepper interno +1 → pide toppings del vaso 2 antes de habilitar Agregar", async ({ page }) => {
+    await selectProduct(page, "Fresas con Crema"); // vaso 1 con sus toppings ya elegidos
     await page.getByTestId("qty-plus").click();
     await expect(page.locator("strong.w-10")).toHaveText("2");
-    await addToCart(page);
+    await expect(page.getByText("Vaso 2 de 2")).toBeVisible();
 
+    const agregar = page.getByRole("button", { name: "Agregar" });
+    await expect(agregar).toBeDisabled();
+
+    await page.getByRole("button", { name: "Lotus", exact: true }).click();
+    await expect(agregar).toBeEnabled();
+    await agregar.click();
+
+    await expect(page.getByText("2 items")).toBeVisible();
     await expect(page.getByTestId("cart-total")).toContainText("72.00");
     await pay(page, "cashAmount", "72");
     await cobrar(page);
+  });
+
+  test("vaso 1 y vaso 2 con toppings distintos en el mismo modal → 2 líneas separadas", async ({ page }) => {
+    await selectProduct(page, "Fresas con Crema"); // vaso 1 → Oreo (via selectProduct's fallback)
+    await page.getByTestId("qty-plus").click();
+    await page.getByRole("button", { name: "Lotus", exact: true }).click(); // vaso 2 → Lotus
+    await page.getByRole("button", { name: "Agregar" }).click();
+
+    await expect(page.getByText("2 items")).toBeVisible();
+    const modifiers = page.getByTestId("cart-line-modifiers");
+    await expect(modifiers.nth(0)).toContainText("Oreo");
+    await expect(modifiers.nth(1)).toContainText("Lotus");
   });
 
   test("notas especiales aparecen en la orden activa", async ({ page }) => {
@@ -201,7 +221,7 @@ test.describe("Kiosk — Flujos de Compra", () => {
 
   // ── Carrito ────────────────────────────────────────────────────────────────
 
-  test("editar item del carrito con lápiz → total actualizado al guardar", async ({ page }) => {
+  test("editar item del carrito con lápiz → subir cantidad pide toppings del vaso 2", async ({ page }) => {
     await selectProduct(page, "Fresas con Crema"); // Q36
     await addToCart(page);
     await expect(page.getByTestId("cart-total")).toContainText("36.00");
@@ -209,10 +229,17 @@ test.describe("Kiosk — Flujos de Compra", () => {
     await page.getByTestId("cart-edit").first().click();
     await expect(page.getByRole("button", { name: "Guardar" })).toBeVisible();
 
-    // Subir cantidad a 2 dentro del editor → Q70.
+    // Subir cantidad a 2 dentro del editor → el vaso 2 arranca vacío.
     await page.getByTestId("qty-plus").click();
-    await page.getByRole("button", { name: "Guardar" }).click();
+    await expect(page.getByText("Vaso 2 de 2")).toBeVisible();
+    const guardar = page.getByRole("button", { name: "Guardar" });
+    await expect(guardar).toBeDisabled();
 
+    await page.getByRole("button", { name: "Lotus", exact: true }).click();
+    await expect(guardar).toBeEnabled();
+    await guardar.click();
+
+    await expect(page.getByText("2 items")).toBeVisible();
     await expect(page.getByTestId("cart-total")).toContainText("72.00");
   });
 

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { useFormStatus } from "react-dom";
 import { useSearchParams } from "next/navigation";
-import { Check, Minus, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Check, ChevronLeft, Minus, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { formatGuatemalaTime } from "@/lib/time";
 import { formatCurrency } from "@/lib/utils";
 import {
+  buildCupCartItems,
   calculateCartItemTotal,
   calculateCashPaymentFromReceived,
   calculateCashChange,
@@ -58,8 +59,7 @@ export function KioskClient({
 }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedProductId, setSelectedProductId] = useState(products[0]?.id ?? "");
-  const [selectedModifiers, setSelectedModifiers] = useState<string[]>([]);
-  const [quantity, setQuantity] = useState(1);
+  const [cupBuilder, setCupBuilder] = useState<{ cups: string[][]; currentIndex: number }>({ cups: [[]], currentIndex: 0 });
   const [notes, setNotes] = useState("");
   const [editingCartItemId, setEditingCartItemId] = useState<string | null>(null);
   const [customizeOpen, setCustomizeOpen] = useState(false);
@@ -75,6 +75,12 @@ export function KioskClient({
   const lastClearedSaleRef = useRef<string | null>(null);
 
   const selectedProduct = products.find((product) => product.id === selectedProductId) ?? products[0];
+  const hasModifierGroups = (selectedProduct?.modifierGroups.length ?? 0) > 0;
+  const { cups: cupModifiers, currentIndex: currentCupIndex } = cupBuilder;
+  const selectedModifiers = cupModifiers[currentCupIndex] ?? [];
+  const quantity = cupModifiers.length;
+  const isLastCup = !hasModifierGroups || currentCupIndex === cupModifiers.length - 1;
+  const showCupNav = hasModifierGroups && cupModifiers.length > 1;
   const productSections = groupProductsByCategory(products);
   const editingCartItem = cart.find((item) => item.localId === editingCartItemId) ?? null;
   const selectedErrors = selectedProduct ? validateModifierSelections(selectedProduct, selectedModifiers) : [];
@@ -109,8 +115,7 @@ export function KioskClient({
     if (!saleSuccessToken || lastClearedSaleRef.current === saleSuccessToken) return;
     lastClearedSaleRef.current = saleSuccessToken;
     setCart([]);
-    setSelectedModifiers([]);
-    setQuantity(1);
+    setCupBuilder({ cups: [[]], currentIndex: 0 });
     setNotes("");
     setEditingCartItemId(null);
     setCustomizeOpen(false);
@@ -127,33 +132,88 @@ export function KioskClient({
   function toggleModifier(product: CatalogProduct, modifierId: string) {
     const group = product.modifierGroups.find((candidate) => candidate.modifiers.some((modifier) => modifier.id === modifierId));
     if (!group) return;
-    setSelectedModifiers((current) => {
-      const exists = current.includes(modifierId);
-      if (exists) return current.filter((id) => id !== modifierId);
+    setCupBuilder((state) => {
+      const cup = state.cups[state.currentIndex];
+      const exists = cup.includes(modifierId);
       const sameGroup = group.modifiers.map((modifier) => modifier.id);
-      const withoutGroup = group.maxSelections === 1 ? current.filter((id) => !sameGroup.includes(id)) : current;
-      return [...withoutGroup, modifierId];
+      const nextCup = exists
+        ? cup.filter((id) => id !== modifierId)
+        : [...(group.maxSelections === 1 ? cup.filter((id) => !sameGroup.includes(id)) : cup), modifierId];
+      const cups = state.cups.map((candidate, index) => (index === state.currentIndex ? nextCup : candidate));
+      return { ...state, cups };
     });
   }
 
   function resetBuilder() {
-    setSelectedModifiers([]);
-    setQuantity(1);
+    setCupBuilder({ cups: [[]], currentIndex: 0 });
     setNotes("");
     setEditingCartItemId(null);
   }
 
-  function saveItem() {
+  // "+" del stepper interno: agrega un vaso vacio y salta el foco a el (tope
+  // MAX_ITEM_QUANTITY). Agregar y configurar un vaso nuevo son la misma accion.
+  function addCup() {
+    setCupBuilder((state) => {
+      if (state.cups.length >= MAX_ITEM_QUANTITY) return state;
+      const cups = [...state.cups, []];
+      return { cups, currentIndex: cups.length - 1 };
+    });
+  }
+
+  // "-" del stepper interno: quita el ultimo vaso (piso de 1 vaso).
+  function removeLastCup() {
+    setCupBuilder((state) => {
+      if (state.cups.length <= 1) return state;
+      const cups = state.cups.slice(0, -1);
+      return { cups, currentIndex: Math.min(state.currentIndex, cups.length - 1) };
+    });
+  }
+
+  // "Anterior"/"Siguiente vaso": revisita un vaso ya configurado sin cambiar
+  // cuantos vasos hay en total.
+  function goToPreviousCup() {
+    setCupBuilder((state) => ({ ...state, currentIndex: Math.max(0, state.currentIndex - 1) }));
+  }
+
+  function goToNextCup() {
+    setCupBuilder((state) => ({ ...state, currentIndex: Math.min(state.cups.length - 1, state.currentIndex + 1) }));
+  }
+
+  // Guarda el vaso actual. Solo se llama cuando es el ultimo vaso (ver el
+  // boton "Agregar"/"Guardar" en el JSX); confirma todo el lote de una vez:
+  // cada vaso queda como su propia linea de carrito (cantidad 1) para que
+  // sus toppings nunca se mezclen con los de otro vaso.
+  function commitCups() {
     if (!selectedProduct || selectedErrors.length) return;
-    if (!editingCartItemId && cart.length >= MAX_CART_LINES) return;
-    const nextItem = {
-      localId: editingCartItemId ?? crypto.randomUUID(),
-      productId: selectedProduct.id,
-      quantity,
-      modifierIds: selectedModifiers,
-      notes: sanitizeOrderNote(notes)
-    };
-    setCart((current) => (editingCartItemId ? replaceCartItem(current, editingCartItemId, nextItem) : [...current, nextItem]));
+    const trimmedNotes = sanitizeOrderNote(notes);
+
+    if (!hasModifierGroups) {
+      if (!editingCartItemId && cart.length >= MAX_CART_LINES) return;
+      const nextItem = {
+        localId: editingCartItemId ?? crypto.randomUUID(),
+        productId: selectedProduct.id,
+        quantity: cupModifiers.length,
+        modifierIds: [] as string[],
+        notes: trimmedNotes
+      };
+      setCart((current) => (editingCartItemId ? replaceCartItem(current, editingCartItemId, nextItem) : [...current, nextItem]));
+      resetBuilder();
+      setCustomizeOpen(false);
+      return;
+    }
+
+    const newItems = buildCupCartItems(selectedProduct.id, cupModifiers, trimmedNotes);
+    const extraLines = editingCartItemId ? newItems.length - 1 : newItems.length;
+    if (cart.length + extraLines > MAX_CART_LINES) return;
+
+    setCart((current) => {
+      if (!editingCartItemId) {
+        return [...current, ...newItems.map((item) => ({ ...item, localId: crypto.randomUUID() }))];
+      }
+      const [firstCup, ...restCups] = newItems;
+      const replaced = replaceCartItem(current, editingCartItemId, { ...firstCup, localId: editingCartItemId });
+      return [...replaced, ...restCups.map((item) => ({ ...item, localId: crypto.randomUUID() }))];
+    });
     resetBuilder();
     setCustomizeOpen(false);
   }
@@ -166,16 +226,21 @@ export function KioskClient({
     setCustomizeOpen(true);
   }
 
+  // Reabre una linea guardada: el vaso 0 arranca con sus toppings actuales;
+  // si la linea tenia cantidad > 1 (solo posible en productos sin toppings),
+  // los vasos siguientes arrancan vacios, igual que un vaso nuevo.
   function startEditingItem(item: CartItem) {
     setSelectedProductId(item.productId);
-    setSelectedModifiers([...item.modifierIds]);
-    setQuantity(item.quantity);
+    const cups: string[][] = Array.from({ length: Math.max(1, item.quantity) }, () => []);
+    cups[0] = [...item.modifierIds];
+    setCupBuilder({ cups, currentIndex: 0 });
     setNotes(item.notes);
     setEditingCartItemId(item.localId);
     setCustomizeOpen(true);
   }
 
-  // Cierra el pop-up sin guardar y limpia el constructor.
+  // Cierra el pop-up sin guardar y limpia el constructor (descarta TODOS los
+  // vasos en progreso, no solo el que se estaba viendo).
   function closeCustomize() {
     setCustomizeOpen(false);
     resetBuilder();
@@ -317,15 +382,34 @@ export function KioskClient({
                     </DialogDescription>
                   </div>
                   <div className="flex shrink-0 items-center rounded-full bg-[var(--muted)] p-1">
-                    <Button data-testid="qty-minus" type="button" size="icon" variant="ghost" className="rounded-full" onClick={() => setQuantity((value) => Math.max(1, value - 1))}>
+                    <Button data-testid="qty-minus" type="button" size="icon" variant="ghost" className="rounded-full" onClick={removeLastCup}>
                       <Minus size={16} />
                     </Button>
                     <strong className="w-10 text-center text-lg">{quantity}</strong>
-                    <Button data-testid="qty-plus" type="button" size="icon" variant="ghost" className="rounded-full" onClick={() => setQuantity((value) => Math.min(MAX_ITEM_QUANTITY, value + 1))}>
+                    <Button data-testid="qty-plus" type="button" size="icon" variant="ghost" className="rounded-full" onClick={addCup}>
                       <Plus size={16} />
                     </Button>
                   </div>
                 </div>
+                {showCupNav ? (
+                  <div className="flex items-center justify-center gap-3 rounded-2xl bg-[var(--muted)]/60 px-4 py-2">
+                    <Button
+                      data-testid="cup-prev"
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-full"
+                      onClick={goToPreviousCup}
+                      disabled={currentCupIndex === 0}
+                    >
+                      <ChevronLeft size={16} />
+                      Anterior
+                    </Button>
+                    <span className="text-sm font-bold text-[var(--foreground)]">
+                      Vaso {currentCupIndex + 1} de {cupModifiers.length}
+                    </span>
+                  </div>
+                ) : null}
               </DialogHeader>
               <div className="space-y-8">
               {selectedProduct.modifierGroups.map((group) => {
@@ -414,9 +498,15 @@ export function KioskClient({
                 <Button data-testid="edit-cancel" type="button" variant="ghost" onClick={closeCustomize}>
                   Cancelar
                 </Button>
-                <Button type="button" size="lg" onClick={saveItem} disabled={selectedErrors.length > 0}>
-                  {editingCartItem ? "Guardar" : "Agregar"}
-                </Button>
+                {isLastCup ? (
+                  <Button type="button" size="lg" onClick={commitCups} disabled={selectedErrors.length > 0}>
+                    {editingCartItem ? "Guardar" : "Agregar"}
+                  </Button>
+                ) : (
+                  <Button type="button" size="lg" onClick={goToNextCup} disabled={selectedErrors.length > 0}>
+                    Siguiente vaso
+                  </Button>
+                )}
               </div>
             </DialogContent>
           ) : null}
@@ -482,7 +572,7 @@ export function KioskClient({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <strong className="block text-base leading-tight">{item.quantity} x {item.product.name}</strong>
-                      <p className="mt-1 text-xs font-medium text-[var(--muted-foreground)]">
+                      <p data-testid="cart-line-modifiers" className="mt-1 text-xs font-medium text-[var(--muted-foreground)]">
                         {item.modifierNames.length > 0 ? item.modifierNames.join(", ") : "Sin extras"}
                       </p>
                     </div>

@@ -208,6 +208,20 @@ export function replaceCartItem<T extends { localId: string }>(items: T[], local
   return items.map((item) => (item.localId === localId ? replacement : item));
 }
 
+export type CupCartItemInput = {
+  productId: string;
+  quantity: 1;
+  modifierIds: string[];
+  notes: string;
+};
+
+// Convierte los toppings elegidos por vaso (uno por indice) en lineas de
+// carrito independientes, cantidad 1 cada una, para que cada vaso conserve
+// sus propios modificadores en vez de compartir un set entre N unidades.
+export function buildCupCartItems(productId: string, cupModifiers: string[][], notes: string): CupCartItemInput[] {
+  return cupModifiers.map((modifierIds) => ({ productId, quantity: 1 as const, modifierIds, notes }));
+}
+
 export function buildSaleSuccessPath(orderId: string) {
   return `/kiosk?ok=venta&order=${encodeURIComponent(orderId)}`;
 }
