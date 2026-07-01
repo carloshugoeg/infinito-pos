@@ -38,6 +38,15 @@ export default async function InventoryPage() {
     threshold: toNumber(ingredient.lowStockThreshold)
   }));
 
+  // Un traslado son dos piernas con el mismo transferId; el "Anular" se muestra una sola
+  // vez por grupo (en la primera pierna listada) y anula ambas piernas a la vez.
+  const firstLegIdByTransfer = new Map<string, string>();
+  for (const move of movements) {
+    if (move.transferId && !firstLegIdByTransfer.has(move.transferId)) {
+      firstLegIdByTransfer.set(move.transferId, move.id);
+    }
+  }
+
   return (
     <AppShell title={`Inventario - ${branch.name}`}>
       <div className="grid gap-4 xl:grid-cols-[0.9fr_1.4fr]">
@@ -119,7 +128,9 @@ export default async function InventoryPage() {
               <Table>
                 <thead><tr><Th>Fecha</Th><Th>Tipo</Th><Th>Ubicacion</Th><Th>Ingrediente</Th><Th>Cantidad</Th><Th>Razon</Th><Th>Accion</Th></tr></thead>
                 <tbody>
-                  {movements.map((move) => (
+                  {movements.map((move) => {
+                    const isSecondaryTransferLeg = Boolean(move.transferId) && firstLegIdByTransfer.get(move.transferId!) !== move.id;
+                    return (
                     <tr key={move.id}>
                       <Td>{move.createdAt.toLocaleString("es-GT")}</Td>
                       <Td>{inventoryMovementTypeLabel(move.type)}</Td>
@@ -130,6 +141,10 @@ export default async function InventoryPage() {
                       <Td>
                         {move.type === InventoryMovementType.SALE ? (
                           <span className="text-xs font-black text-[var(--muted-foreground)]">Venta</span>
+                        ) : isSecondaryTransferLeg ? (
+                          <span className="text-xs font-black text-[var(--muted-foreground)]">Traslado</span>
+                        ) : move.reversedAt ? (
+                          <span className="text-xs font-black text-[var(--muted-foreground)]">Anulado</span>
                         ) : (
                           <form action={reverseInventoryMovementAction}>
                             <input type="hidden" name="id" value={move.id} />
@@ -138,7 +153,8 @@ export default async function InventoryPage() {
                         )}
                       </Td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </Table>
             </CardContent>
