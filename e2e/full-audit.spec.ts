@@ -139,8 +139,13 @@ test.describe("Auditoría — Usuarios y permisos OPERATOR", () => {
     await opPage.getByRole("button", { name: "Entrar" }).click();
     await expect(opPage).toHaveURL(/\/(kiosk|cash\/open|select-branch)/);
 
+    // An OPERATOR who hits /admin is bounced out of the admin area. Depending on
+    // cash-session / branch-selection state the landing surface is /kiosk,
+    // /cash/open or /select-branch — the security invariant is only that they end
+    // up on an operator surface, never inside /admin.
     await opPage.goto("/admin");
-    await expect(opPage).toHaveURL(/\/kiosk/);
+    await expect(opPage).toHaveURL(/\/(kiosk|cash\/open|select-branch)/);
+    await expect(opPage).not.toHaveURL(/\/admin/);
     await expect(opPage.getByRole("link", { name: "Administracion" })).not.toBeVisible();
     await opContext.close();
   });
