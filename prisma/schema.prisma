@@ -68,6 +68,7 @@ model Branch {
   code               String              @unique
   address            String?
   isActive           Boolean             @default(true)
+  isTest             Boolean             @default(false)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   users              UserBranch[]

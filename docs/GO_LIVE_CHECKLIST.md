@@ -113,6 +113,7 @@ Ejecutar **una vez en el dispositivo real** (768×1024 o el tablet del piloto):
 | `[x]` | P1-QA-06 | Playwright viewport tablet `768×1024` en config o proyecto dedicado | GAP | `e2e/tablet-smoke.spec.ts` (`test.use` viewport 768×1024); smoke de venta efectivo verde 2026-06-13 |
 | `[x]` | P1-QA-07 | Verificar permisos OPERATOR end-to-end (crear user → login → bloqueo admin) | E-003 | Cubierto por `full-audit.spec.ts` ("crear operador → login → bloqueado en /admin"); verde 2026-06-13 |
 | `[x]` | P1-QA-08 | CI en GitHub Actions: lint/typecheck/test/build + e2e (Postgres efímero, ambos seeds) | NUEVO | `.github/workflows/ci.yml` en push/PR; ambos jobs bloquean. DB fresca evita el estado sucio de dev; e2e 67/67 |
+| `[ ]` | P1-QA-TESTS | **P1-QA-TESTS** — Bootstrap the test fixtures in prod once: with the prod env loaded, `ALLOW_PROD_SEED=true TEST_USER_EMAIL=… TEST_USER_PASSWORD=… npm run db:seed:tests`. Creates the TESTS/TESTS2 sucursales + qa account so post-deploy smoke tests never touch the real client's data. Apply the `add_branch_is_test` migration first (`prisma migrate deploy`). | NUEVO | — |
 
 ### Seguridad alta
 

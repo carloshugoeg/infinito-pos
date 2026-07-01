@@ -40,7 +40,14 @@ export default async function BranchesPage() {
                     <div className="flex items-end"><Button type="submit" variant="secondary">Guardar</Button></div>
                   </form>
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-sm font-black text-[var(--muted-foreground)]">{branch.isActive ? "Activa" : "Inactiva"}</span>
+                    <span className="flex items-center gap-2 text-sm font-black text-[var(--muted-foreground)]">
+                      {branch.isActive ? "Activa" : "Inactiva"}
+                      {branch.isTest ? (
+                        <span className="rounded-full bg-[var(--soft-lilac)] px-2 py-0.5 text-xs font-black text-[var(--accent-2)]">
+                          PRUEBAS
+                        </span>
+                      ) : null}
+                    </span>
                     <div className="flex flex-wrap gap-2">
                       <form action={toggleBranchActiveAction}>
                         <input type="hidden" name="id" value={branch.id} />
