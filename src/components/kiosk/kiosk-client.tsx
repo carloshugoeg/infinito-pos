@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { useFormStatus } from "react-dom";
 import { useSearchParams } from "next/navigation";
-import { Check, Minus, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Check, ChevronLeft, Minus, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -391,6 +391,25 @@ export function KioskClient({
                     </Button>
                   </div>
                 </div>
+                {showCupNav ? (
+                  <div className="flex items-center justify-center gap-3 rounded-2xl bg-[var(--muted)]/60 px-4 py-2">
+                    <Button
+                      data-testid="cup-prev"
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-full"
+                      onClick={goToPreviousCup}
+                      disabled={currentCupIndex === 0}
+                    >
+                      <ChevronLeft size={16} />
+                      Anterior
+                    </Button>
+                    <span className="text-sm font-bold text-[var(--foreground)]">
+                      Vaso {currentCupIndex + 1} de {cupModifiers.length}
+                    </span>
+                  </div>
+                ) : null}
               </DialogHeader>
               <div className="space-y-8">
               {selectedProduct.modifierGroups.map((group) => {
@@ -479,9 +498,15 @@ export function KioskClient({
                 <Button data-testid="edit-cancel" type="button" variant="ghost" onClick={closeCustomize}>
                   Cancelar
                 </Button>
-                <Button type="button" size="lg" onClick={commitCups} disabled={selectedErrors.length > 0}>
-                  {editingCartItem ? "Guardar" : "Agregar"}
-                </Button>
+                {isLastCup ? (
+                  <Button type="button" size="lg" onClick={commitCups} disabled={selectedErrors.length > 0}>
+                    {editingCartItem ? "Guardar" : "Agregar"}
+                  </Button>
+                ) : (
+                  <Button type="button" size="lg" onClick={goToNextCup} disabled={selectedErrors.length > 0}>
+                    Siguiente vaso
+                  </Button>
+                )}
               </div>
             </DialogContent>
           ) : null}
@@ -547,7 +572,7 @@ export function KioskClient({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <strong className="block text-base leading-tight">{item.quantity} x {item.product.name}</strong>
-                      <p className="mt-1 text-xs font-medium text-[var(--muted-foreground)]">
+                      <p data-testid="cart-line-modifiers" className="mt-1 text-xs font-medium text-[var(--muted-foreground)]">
                         {item.modifierNames.length > 0 ? item.modifierNames.join(", ") : "Sin extras"}
                       </p>
                     </div>
