@@ -185,19 +185,23 @@ test.describe("Auditoría — Ingredientes e inventario", () => {
     await expect(page.locator(`input[value="${ingName}"]`)).toBeVisible({ timeout: 10_000 });
 
     await page.goto("/admin/inventory");
-    await page.locator('select[name="ingredientId"]').selectOption({ label: `${ingName} (g)` });
-    await page.locator('select[name="type"]').selectOption("PURCHASE");
-    await page.locator('input[name="quantity"]').fill("100");
-    await page.locator('input[name="reason"]').fill("Compra E2E");
-    await page.getByRole("button", { name: "Registrar" }).click();
+    // Ahora hay dos <form> con select[name="ingredientId"] (movimiento manual +
+    // traslado bodega→quiosco). Acotamos al form de movimiento manual, identificado
+    // por su botón "Registrar", para evitar el strict-mode de Playwright.
+    const movementForm = page.locator("form").filter({ has: page.getByRole("button", { name: "Registrar" }) });
+    await movementForm.locator('select[name="ingredientId"]').selectOption({ label: `${ingName} (g)` });
+    await movementForm.locator('select[name="type"]').selectOption("PURCHASE");
+    await movementForm.locator('input[name="quantity"]').fill("100");
+    await movementForm.locator('input[name="reason"]').fill("Compra E2E");
+    await movementForm.getByRole("button", { name: "Registrar" }).click();
     // "Stock actual" cell renders quantity with unit ("100 g"); movement rows show the raw delta, so scope by unit to avoid strict-mode matches.
     await expect(page.locator("tr").filter({ hasText: ingName }).filter({ hasText: "100 g" })).toBeVisible({ timeout: 10_000 });
 
-    await page.locator('select[name="ingredientId"]').selectOption({ label: `${ingName} (g)` });
-    await page.locator('select[name="type"]').selectOption("WASTE");
-    await page.locator('input[name="quantity"]').fill("20");
-    await page.locator('input[name="reason"]').fill("Merma E2E");
-    await page.getByRole("button", { name: "Registrar" }).click();
+    await movementForm.locator('select[name="ingredientId"]').selectOption({ label: `${ingName} (g)` });
+    await movementForm.locator('select[name="type"]').selectOption("WASTE");
+    await movementForm.locator('input[name="quantity"]').fill("20");
+    await movementForm.locator('input[name="reason"]').fill("Merma E2E");
+    await movementForm.getByRole("button", { name: "Registrar" }).click();
     await expect(page.locator("tr").filter({ hasText: ingName }).filter({ hasText: "80 g" })).toBeVisible({ timeout: 10_000 });
   });
 });
